@@ -1,5 +1,5 @@
 /* ============================================================
-   Camila · Catálogo y Precios — hoja de estilos
+   C & O · Perfumería — hoja de estilos
    ============================================================ */
 
 :root {
@@ -8,9 +8,10 @@
   --tinta: #26201b;
   --tinta-suave: #6f635a;
   --tinta-faint: #a89c92;
-  --acento: #c25b4e;
-  --acento-oscuro: #a4443a;
-  --acento-suave: #f7e8e4;
+  --acento: #c9a227;
+  --acento-oscuro: #a8861d;
+  --acento-suave: #f5eeda;
+  --rosa: #e8a0b4;
   --borde: #eadfd4;
   --borde-fuerte: #d9c9ba;
   --dorado: #c9a227;
@@ -34,8 +35,8 @@ body {
   font-family: var(--font-cuerpo);
   background: var(--bg);
   background-image:
-    radial-gradient(1200px 500px at 85% -10%, rgba(194, 91, 78, 0.07), transparent 60%),
-    radial-gradient(900px 420px at -10% 0%, rgba(201, 162, 39, 0.06), transparent 55%);
+    radial-gradient(1200px 500px at 85% -10%, rgba(201, 162, 39, 0.09), transparent 60%),
+    radial-gradient(900px 420px at -10% 0%, rgba(232, 160, 180, 0.10), transparent 55%);
   color: var(--tinta);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -45,7 +46,7 @@ img { max-width: 100%; display: block; }
 
 button { font-family: inherit; cursor: pointer; }
 
-::selection { background: var(--acento); color: #fff; }
+::selection { background: var(--acento); color: var(--tinta); }
 
 /* ============================ Topbar ============================ */
 
@@ -134,6 +135,14 @@ button { font-family: inherit; cursor: pointer; }
 
 .brand-name.big { font-size: 1.7rem; }
 
+.brand-perfumeria {
+  font-style: italic;
+  font-weight: 600;
+  font-size: 0.62em;
+  color: var(--acento);
+  letter-spacing: 0.02em;
+}
+
 .brand-tag {
   font-size: 0.66rem;
   text-transform: uppercase;
@@ -174,7 +183,7 @@ button { font-family: inherit; cursor: pointer; }
 .searchbox input:focus {
   outline: none;
   border-color: var(--acento);
-  box-shadow: 0 0 0 3px rgba(194, 91, 78, 0.14);
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.2);
 }
 
 .searchbox input::placeholder { color: var(--tinta-faint); }
@@ -217,13 +226,14 @@ button { font-family: inherit; cursor: pointer; }
 
 .btn-primary {
   background: var(--acento);
-  color: #fff;
-  box-shadow: 0 6px 16px rgba(194, 91, 78, 0.28);
+  color: var(--tinta);
+  box-shadow: 0 6px 16px rgba(201, 162, 39, 0.32);
 }
 
 .btn-primary:hover {
   background: var(--acento-oscuro);
-  box-shadow: 0 8px 22px rgba(194, 91, 78, 0.36);
+  color: var(--tinta);
+  box-shadow: 0 8px 22px rgba(201, 162, 39, 0.42);
   transform: translateY(-1px);
 }
 
@@ -465,7 +475,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .drawer-note code {
-  background: rgba(194, 91, 78, 0.12);
+  background: rgba(201, 162, 39, 0.16);
   padding: 1px 5px;
   border-radius: 5px;
   font-size: 0.74rem;
@@ -478,6 +488,26 @@ button { font-family: inherit; cursor: pointer; }
   max-width: 1240px;
   margin: 0 auto;
   padding: clamp(22px, 4vw, 44px) clamp(14px, 4vw, 32px) 60px;
+}
+
+/* --- Logo C & O --- */
+.brand-logo { display: none; }
+
+.logo-co { width: 52px; height: 36px; }
+
+.hero-logo {
+  width: min(300px, 62vw);
+  height: auto;
+  margin: 0 auto 4px;
+  display: block;
+}
+
+.hero-tagline {
+  margin: 0 0 14px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: var(--tinta-suave);
 }
 
 .hero {
@@ -996,6 +1026,31 @@ button { font-family: inherit; cursor: pointer; }
 
 .pie p { margin: 0; }
 
+.pie-contacto {
+  font-size: 0.95rem;
+  color: var(--tinta-suave);
+  margin-bottom: 4px !important;
+}
+
+.pie-contacto strong {
+  font-family: var(--font-titulo);
+  font-size: 1.15rem;
+  color: var(--acento);
+  font-weight: 700;
+}
+
+.pie-nombre {
+  font-size: 0.85rem;
+  color: var(--tinta-suave);
+  margin-bottom: 8px !important;
+}
+
+.pie-marca {
+  font-family: var(--font-titulo);
+  font-style: italic;
+  color: var(--acento);
+}
+
 /* ============================ Responsive ============================ */
 
 @media (max-width: 900px) {
@@ -1074,10 +1129,10 @@ button { font-family: inherit; cursor: pointer; }
   place-items: center;
   font-size: 11px;
   font-weight: 700;
-  color: #fff;
+  color: var(--tinta);
   background: var(--acento);
   border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(194, 91, 78, 0.4);
+  box-shadow: 0 2px 6px rgba(201, 162, 39, 0.45);
 }
 
 .drawer-carrito { right: 0; left: auto; transform: translateX(100%); }
@@ -1194,7 +1249,7 @@ button { font-family: inherit; cursor: pointer; }
   border: none;
   border-radius: 50%;
   background: var(--acento);
-  color: #fff;
+  color: var(--tinta);
   box-shadow: var(--sombra-alta);
   transition: transform var(--trans);
 }

@@ -1,5 +1,5 @@
 /* ============================================================
-   Camila · Catálogo y Precios — lógica de la app
+   C & O · Perfumería — lógica de la app
    Sin backend: todo corre en el navegador del visitante.
    ============================================================ */
 
@@ -970,7 +970,7 @@
     const lineaTotal = Number.isFinite(total) && total > 0
       ? `\n\n*Total: ${prefs.moneda} ${new Intl.NumberFormat("es-CO").format(total)}*`
       : "\n\n*(precios a confirmar)*";
-    return `¡Hola Camila! Quiero cotizar estos productos del catálogo (${fecha}):\n\n${lineas.join("\n")}${lineaTotal}\n\n¿Me confirmas disponibilidad y tiempo de entrega? ¡Gracias!`;
+    return `¡Hola C & O Perfumería! Quiero cotizar estas fragancias (${fecha}):\n\n${lineas.join("\n")}${lineaTotal}\n\n¿Me confirmas disponibilidad y tiempo de entrega? ¡Gracias!`;
   }
 
   async function enviarCotizacion() {

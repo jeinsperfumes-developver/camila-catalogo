@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Camila · Catálogo y Precios</title>
-  <meta name="description" content="Catálogo de productos con precios. Importa tu Excel o CSV y publica al instante." />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia'>C</text></svg>" />
+  <title>C &amp; O · Perfumería</title>
+  <meta name="description" content="C &amp; O Perfumería — catálogo de fragancias. Realza tu belleza, expresa tu estilo." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='72' text-anchor='middle' font-size='62' font-family='Georgia' fill='%23c9a227'>C%26O</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -23,9 +23,26 @@
       </span>
     </button>
 
-    <a class="brand" href="#" aria-label="Camila, inicio">
-      <span class="brand-name">Camila</span>
-      <span class="brand-tag">catálogo &amp; precios</span>
+    <a class="brand" href="#" aria-label="C y O Perfumería, inicio">
+      <span class="brand-logo">
+        <svg viewBox="0 0 64 44" aria-hidden="true" class="logo-co">
+          <!-- flor rosa sobre la C -->
+          <g transform="translate(10,8) scale(0.9)">
+            <circle cx="0" cy="-4.2" r="3.1" fill="#e8a0b4"/>
+            <circle cx="4" cy="-1.3" r="3.1" fill="#e8a0b4"/>
+            <circle cx="2.5" cy="3.4" r="3.1" fill="#e8a0b4"/>
+            <circle cx="-2.5" cy="3.4" r="3.1" fill="#e8a0b4"/>
+            <circle cx="-4" cy="-1.3" r="3.1" fill="#e8a0b4"/>
+            <circle cx="0" cy="0" r="2.2" fill="#c9a227"/>
+          </g>
+          <text x="14" y="38" font-family="Georgia, serif" font-weight="700" font-size="30" fill="#c9a227">C</text>
+          <text x="33" y="36" font-family="Georgia, serif" font-size="20" fill="#c9a227">&amp;</text>
+          <text x="44" y="38" font-family="Georgia, serif" font-weight="700" font-size="30" fill="#c9a227">O</text>
+          <path d="M36 40c-1.2-1.4-3-2.2-3-4.2 0-1.5 1.2-2.6 2.6-2.6 1 0 1.9.5 2.4 1.3.5-.8 1.4-1.3 2.4-1.3 1.4 0 2.6 1.1 2.6 2.6 0 2-1.8 2.8-3 4.2l-2 2.2z" fill="#e8a0b4" transform="scale(0.5) translate(38,18)"/>
+        </svg>
+      </span>
+      <span class="brand-name">C &amp; O <em class="brand-perfumeria">perfumería</em></span>
+      <span class="brand-tag">fragancias que te definen</span>
     </a>
 
     <div class="searchbox" role="search">
@@ -50,7 +67,7 @@
 
   <nav class="drawer" id="drawer" aria-label="Menú principal" aria-hidden="true">
     <div class="drawer-header">
-      <span class="brand-name big">Camila</span>
+      <span class="brand-name big">C &amp; O <em class="brand-perfumeria">perfumería</em></span>
       <button class="drawer-close" id="btnCerrarDrawer" aria-label="Cerrar menú">&times;</button>
     </div>
 
@@ -120,7 +137,28 @@
   <main class="layout">
 
     <section class="hero">
-      <h1>Catálogo <em>Camila</em></h1>
+      <svg class="hero-logo" viewBox="0 0 340 150" aria-label="C y O Perfumería" role="img">
+        <!-- flor rosa -->
+        <g transform="translate(58,30)">
+          <circle cx="0" cy="-11" r="8" fill="#e8a0b4"/>
+          <circle cx="10.4" cy="-3.4" r="8" fill="#e8a0b4"/>
+          <circle cx="6.5" cy="8.9" r="8" fill="#e8a0b4"/>
+          <circle cx="-6.5" cy="8.9" r="8" fill="#e8a0b4"/>
+          <circle cx="-10.4" cy="-3.4" r="8" fill="#e8a0b4"/>
+          <circle cx="0" cy="0" r="5.5" fill="#c9a227"/>
+          <path d="M0 12 C 1 20, -1 26, -4 31" fill="none" stroke="#7a9a5a" stroke-width="3" stroke-linecap="round"/>
+          <path d="M-4 22 C -10 20, -14 15, -15 10 C -9 12, -5 16, -4 22 Z" fill="#7a9a5a"/>
+        </g>
+        <!-- C & O -->
+        <text x="30" y="115" font-family="Georgia, serif" font-weight="700" font-size="86" fill="#c9a227">C</text>
+        <text x="120" y="110" font-family="Georgia, serif" font-size="56" fill="#c9a227">&amp;</text>
+        <path d="M136 207c-10-11-24-17-24-33 0-12 9-21 21-21 8 0 15 4 19 10 4-6 11-10 19-10 12 0 21 9 21 21 0 16-14 22-24 33l-16 17z" fill="#e8a0b4" transform="scale(0.42) translate(232,105)"/>
+        <text x="170" y="115" font-family="Georgia, serif" font-weight="700" font-size="86" fill="#c9a227">O</text>
+        <!-- perfumería -->
+        <text x="170" y="145" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="26" fill="#c9a227">perfumería</text>
+      </svg>
+      <p class="hero-tagline">Realza tu belleza · Expresa tu estilo</p>
+      <h1>Fragancias que te <em>definen</em></h1>
       <p id="heroSub">Importa tu Excel o CSV y tendrás tu catálogo con precios listo para compartir.</p>
     </section>
 
@@ -167,7 +205,9 @@
   </main>
 
   <footer class="pie">
-    <p>Camila · hecho con cariño para compartir catálogos bonitos.</p>
+    <p class="pie-contacto">Contáctanos al <strong>Celular 314 276 8503</strong></p>
+    <p class="pie-nombre">Andrea Camila Ordóñez Laguna</p>
+    <p class="pie-marca">C &amp; O perfumería · realza tu belleza, expresa tu estilo</p>
   </footer>
 
   <!-- ===== Modal detalle producto ===== -->
