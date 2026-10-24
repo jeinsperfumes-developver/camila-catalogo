@@ -15,7 +15,7 @@
   /** @type {Producto[]} */
   let productos = [];
   let categoriaActiva = "todas";
-  let prefs = { moneda: "$ USD", mostrarPrecios: true };
+  let prefs = { moneda: "$ USD", mostrarPrecios: false };
 
   /**
    * @typedef {Object} Producto
@@ -280,18 +280,14 @@
         throw new Error("No encontré filas válidas. Asegúrate de que haya una columna «nombre» o «producto».");
       }
 
-      const conPrecio = nuevos.filter((p) => Number.isFinite(p.precio));
-      if (!conPrecio.length) {
-        throw new Error("No encontré la columna de precios. Debe llamarse «precio», «price», «valor»…");
-      }
-
       productos = nuevos;
       guardarDatos();
       categoriaActiva = "todas";
       elementos.inputBusqueda.value = "";
       elementos.btnLimpiarBusqueda.hidden = true;
       renderizarTodo();
-      toast(`Importados ${conPrecio.length} productos${conPrecio.length < nuevos.length ? ` (${nuevos.length - conPrecio.length} sin precio válido)` : ""}.`);
+      const conPrecio = nuevos.filter((p) => Number.isFinite(p.precio));
+      toast(`Importados ${nuevos.length} productos${conPrecio.length ? ` (${conPrecio.length} con precio)` : ""}.`);
     } catch (err) {
       toast(err.message || "Error al importar el archivo.", true);
     } finally {
@@ -428,8 +424,7 @@
   }
 
   function formatearPrecio(n) {
-    if (!prefs.mostrarPrecios) return "—";
-    if (!Number.isFinite(n)) return "Consultar";
+    if (!prefs.mostrarPrecios || !Number.isFinite(n)) return "";
     const esEntero = Number.isInteger(n);
     const numero = new Intl.NumberFormat("es-AR", {
       minimumFractionDigits: esEntero ? 0 : 2,
@@ -474,6 +469,10 @@
     return b;
   }
 
+  // Acepta URLs absolutas y rutas relativas del repo (ej. imagenes/dama/p01_00.jpg)
+  const esFotoValida = (imagen) =>
+    /^https?:\/\/.+/.test(imagen) || /^(?!\/)[\w][\w\/ .-]*\.(jpe?g|png|webp|avif|gif|svg)$/i.test(imagen.trim());
+
   function tarjetaProducto(p, i) {
     const art = document.createElement("article");
     art.className = "tarjeta";
@@ -481,17 +480,18 @@
     art.tabIndex = 0;
     art.setAttribute("aria-label", p.nombre);
 
-    const tieneFoto = /^https?:\/\/.+/.test(p.imagen);
+    const tieneFoto = esFotoValida(p.imagen);
     const agotado = /^(no|0|sin|false|agotado)/i.test(p.stock.trim());
 
     const media = tieneFoto
-      ? `<img src="${escapar(p.imagen)}" alt="${escapar(p.nombre)}" loading="lazy" onerror="this.remove()" />`
+      ? `<img src="${escapar(p.imagen.trim())}" alt="${escapar(p.nombre)}" loading="lazy" onerror="this.remove()" />`
       : `<span class="sin-foto">${escapar(inicialChulis(p.nombre))}</span>`;
 
     const badge = p.categoria && p.categoria !== "Sin categoría"
       ? `<span class="tarjeta-badge">${escapar(p.categoria)}</span>` : "";
 
-    const anterior = Number.isFinite(p.precioAnterior) && p.precioAnterior > p.precio
+    const precioHTML = formatearPrecio(p.precio);
+    const anterior = Number.isFinite(p.precioAnterior) && p.precioAnterior > p.precio && formatearPrecio(p.precioAnterior)
       ? `<small>${escapar(formatearPrecio(p.precioAnterior))}</small>` : "";
 
     const stock = p.stock.trim()
@@ -504,7 +504,7 @@
         ${p.codigo ? `<span class="tarjeta-codigo">${escapar(p.codigo)}</span>` : ""}
         ${p.descripcion ? `<p class="tarjeta-descripcion">${escapar(p.descripcion)}</p>` : ""}
         <div class="tarjeta-pie">
-          <span class="tarjeta-precio">${escapar(formatearPrecio(p.precio))}${anterior}</span>
+          ${precioHTML ? `<span class="tarjeta-precio">${escapar(precioHTML)}${anterior}</span>` : ""}
           ${stock}
         </div>
       </div>`;
@@ -514,6 +514,16 @@
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrirModal(p); }
     });
     return art;
+  }
+
+  // Oculta los controles de precio (orden y slider) cuando no hay
+  // precios que mostrar ni filtrar.
+  function actualizarControlesPrecio() {
+    const hayPrecios = prefs.mostrarPrecios && productos.some((p) => Number.isFinite(p.precio));
+    document.querySelectorAll("#selOrden option[value^='precio-']").forEach((o) => (o.hidden = !hayPrecios));
+    elementos.inputPrecioMax.closest(".rango-wrap").style.display = hayPrecios ? "" : "none";
+    elementos.selOrden.value = hayPrecios ? elementos.selOrden.value : "relevante";
+    if (!hayPrecios && elementos.selOrden.value.startsWith("precio-")) elementos.selOrden.value = "relevante";
   }
 
   function renderizarGrid() {
@@ -550,16 +560,20 @@
   function renderizarTodo() {
     renderizarCategorias();
     renderizarGrid();
+    actualizarControlesPrecio();
     elementos.statTotal.textContent = productos.length;
+    const fecha = new Date().toLocaleDateString("es", { day: "numeric", month: "long" });
     elementos.heroSub.textContent = productos.length
-      ? `${productos.length} productos · precios actualizados al ${new Date().toLocaleDateString("es", { day: "numeric", month: "long" })}`
-      : "Importa tu Excel o CSV y tendrás tu catálogo con precios listo para compartir.";
+      ? (prefs.mostrarPrecios
+          ? `${productos.length} productos · precios actualizados al ${fecha}`
+          : `${productos.length} productos · catálogo actualizado al ${fecha}`)
+      : "Importa tu Excel o CSV y tendrás tu catálogo listo para compartir.";
   }
 
   /* ---------------- Modal detalle ---------------- */
 
   function abrirModal(p) {
-    const tieneFoto = /^https?:\/\/.+/.test(p.imagen);
+    const tieneFoto = esFotoValida(p.imagen);
     elementos.modalMedia.innerHTML = tieneFoto
       ? `<img src="${escapar(p.imagen)}" alt="${escapar(p.nombre)}" />`
       : `<span class="sin-foto">${escapar(inicialChulis(p.nombre))}</span>`;
@@ -567,12 +581,13 @@
     elementos.modalCategoria.textContent = p.categoria || "";
     elementos.modalTitulo.textContent = p.nombre;
     elementos.modalPrecio.textContent = formatearPrecio(p.precio);
+    elementos.modalPrecio.hidden = !formatearPrecio(p.precio);
     elementos.modalDescripcion.textContent = p.descripcion || "";
 
     const metas = [];
     if (p.codigo) metas.push(`Código: ${p.codigo}`);
     if (p.stock.trim()) metas.push(`Stock: ${p.stock}`);
-    if (Number.isFinite(p.precioAnterior) && p.precioAnterior > p.precio)
+    if (prefs.mostrarPrecios && Number.isFinite(p.precioAnterior) && p.precioAnterior > p.precio)
       metas.push(`Antes: ${formatearPrecio(p.precioAnterior)}`);
     elementos.modalMeta.innerHTML = metas.map(escapar).join("<br/>");
 
@@ -647,7 +662,7 @@
     elementos.chkPrecios.addEventListener("change", () => {
       prefs.mostrarPrecios = elementos.chkPrecios.checked;
       guardarPrefs();
-      renderizarGrid();
+      renderizarTodo();
     });
     elementos.selMoneda.addEventListener("change", () => {
       prefs.moneda = elementos.selMoneda.value;
