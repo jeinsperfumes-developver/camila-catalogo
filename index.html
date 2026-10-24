@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camila · Catálogo y Precios</title>
+  <meta name="description" content="Catálogo de productos con precios. Importa tu Excel o CSV y publica al instante." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia'>C</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ===== Barra superior ===== -->
+  <header class="topbar">
+    <button class="hamburger" id="btnMenu" aria-label="Abrir menú" aria-expanded="false" aria-controls="drawer">
+      <span class="hamburger-box" aria-hidden="true">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+      </span>
+    </button>
+
+    <a class="brand" href="#" aria-label="Camila, inicio">
+      <span class="brand-name">Camila</span>
+      <span class="brand-tag">catálogo &amp; precios</span>
+    </a>
+
+    <div class="searchbox" role="search">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 21l-4.35-4.35M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input type="search" id="inputBusqueda" placeholder="Buscar producto, código, categoría…" autocomplete="off" />
+      <button class="search-clear" id="btnLimpiarBusqueda" aria-label="Limpiar búsqueda" hidden>&times;</button>
+    </div>
+
+    <button class="btn btn-primary btn-import-top" id="btnImportarTop">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Importar</span>
+    </button>
+  </header>
+
+  <!-- ===== Menú lateral (hamburguesa) ===== -->
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+
+  <nav class="drawer" id="drawer" aria-label="Menú principal" aria-hidden="true">
+    <div class="drawer-header">
+      <span class="brand-name big">Camila</span>
+      <button class="drawer-close" id="btnCerrarDrawer" aria-label="Cerrar menú">&times;</button>
+    </div>
+
+    <div class="drawer-body">
+      <p class="drawer-section-title">Datos</p>
+      <button class="drawer-item" id="btnImportarMenu">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Importar Excel / CSV
+      </button>
+      <button class="drawer-item" id="btnExportar">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4l4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Exportar catálogo (CSV)
+      </button>
+      <button class="drawer-item" id="btnPlantilla">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6zm0 0v6h6M8 13h8M8 17h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Descargar plantilla
+      </button>
+      <button class="drawer-item danger" id="btnVaciar">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Vaciar catálogo
+      </button>
+
+      <p class="drawer-section-title">Vista</p>
+      <label class="drawer-toggle">
+        <span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          Mostrar precios
+        </span>
+        <input type="checkbox" id="chkPrecios" checked />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <div class="drawer-field">
+        <label for="selMoneda">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Moneda
+        </label>
+        <select id="selMoneda">
+          <option value="$ USD">$ USD</option>
+          <option value="$ ARS">$ ARS</option>
+          <option value="$ CLP">$ CLP</option>
+          <option value="$ COP">$ COP</option>
+          <option value="$ MXN">$ MXN</option>
+          <option value="S/ PEN">S/ PEN</option>
+          <option value="€ EUR">€ EUR</option>
+          <option value="R$ BRL">R$ BRL</option>
+          <option value="Bs BOB">Bs BOB</option>
+          <option value="S/ USD">Sin símbolo</option>
+        </select>
+      </div>
+
+      <p class="drawer-section-title">Acerca de</p>
+      <div class="drawer-stats" id="drawerStats">
+        <div><strong id="statTotal">0</strong><span>productos</span></div>
+        <div><strong id="statCategorias">0</strong><span>categorías</span></div>
+      </div>
+      <p class="drawer-note">Los datos importados viven en este navegador (localStorage). Para publicarlos en el sitio, exporta el CSV y súbelo a tu repositorio como <code>catalogo.csv</code>.</p>
+    </div>
+  </nav>
+
+  <!-- ===== Contenido principal ===== -->
+  <main class="layout">
+
+    <section class="hero">
+      <h1>Catálogo <em>Camila</em></h1>
+      <p id="heroSub">Importa tu Excel o CSV y tendrás tu catálogo con precios listo para compartir.</p>
+    </section>
+
+    <section class="filtros" aria-label="Filtros">
+      <div class="chips" id="chipsCategorias" role="tablist" aria-label="Filtrar por categoría"></div>
+
+      <div class="filtro-fila">
+        <div class="select-wrap">
+          <label for="selOrden">Ordenar por</label>
+          <select id="selOrden">
+            <option value="relevante">Relevancia</option>
+            <option value="precio-asc">Precio: menor a mayor</option>
+            <option value="precio-desc">Precio: mayor a menor</option>
+            <option value="nombre-asc">Nombre: A–Z</option>
+            <option value="nombre-desc">Nombre: Z–A</option>
+          </select>
+        </div>
+        <div class="rango-wrap">
+          <label for="inputPrecioMax">Precio máximo</label>
+          <input type="range" id="inputPrecioMax" min="0" max="100" value="100" step="1" />
+          <output id="outPrecioMax">Todos</output>
+        </div>
+      </div>
+    </section>
+
+    <p class="resultado-info" id="infoResultados" aria-live="polite"></p>
+
+    <!-- Estado vacío -->
+    <section class="estado-vacio" id="estadoVacio" hidden>
+      <svg class="icon big" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7zm0 0l9 4m0 0l9-4m-9 4v10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h2>Tu catálogo está vacío</h2>
+      <p>Sube un archivo <strong>Excel (.xlsx)</strong> o <strong>CSV (.csv)</strong> con tus productos.<br/>Si el repositorio incluye <code>catalogo.csv</code>, se cargará automáticamente.</p>
+      <div class="estado-vacio-acciones">
+        <button class="btn btn-primary" id="btnImportarVacio">Importar archivo</button>
+        <button class="btn btn-ghost" id="btnPlantillaVacio">Ver plantilla de ejemplo</button>
+        <button class="btn btn-ghost" id="btnDemo">Cargar datos de demostración</button>
+      </div>
+    </section>
+
+    <!-- Grid de productos -->
+    <section class="grid" id="gridProductos" aria-label="Listado de productos"></section>
+
+    <p class="sin-resultados" id="sinResultados" hidden>No hay productos que coincidan con los filtros.</p>
+  </main>
+
+  <footer class="pie">
+    <p>Camila · hecho con cariño para compartir catálogos bonitos.</p>
+  </footer>
+
+  <!-- ===== Modal detalle producto ===== -->
+  <div class="modal-backdrop" id="modalBackdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitulo" id="modalProducto">
+      <button class="modal-close" id="btnCerrarModal" aria-label="Cerrar detalle">&times;</button>
+      <div class="modal-media" id="modalMedia"></div>
+      <div class="modal-contenido">
+        <p class="modal-categoria" id="modalCategoria"></p>
+        <h2 id="modalTitulo"></h2>
+        <p class="modal-precio" id="modalPrecio"></p>
+        <p class="modal-descripcion" id="modalDescripcion"></p>
+        <p class="modal-meta" id="modalMeta"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input de archivo oculto -->
+  <input type="file" id="inputArchivo" accept=".csv,.xlsx,.xls" hidden />
+
+  <!-- Cargando overlay -->
+  <div class="cargando" id="cargando" hidden>
+    <div class="spinner" role="status" aria-label="Procesando archivo"></div>
+    <p>Procesando archivo…</p>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- SheetJS para leer Excel (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
+  <script src="app.js"></script>
+</body>
+</html>

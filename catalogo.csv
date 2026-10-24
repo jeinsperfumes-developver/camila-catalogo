@@ -1,0 +1,13 @@
+codigo;nombre;descripcion;categoria;precio;precio anterior;imagen;stock
+COD-001;Vestido Flor Midi;Vestido midi estampado con flores, tela fluida y forro interior.;Vestidos;45900;;;Sí
+COD-002;Blusa Seda Natural;Blusa de seda con cuello vuelo y manga globo.;Blusas;28500;;;Sí
+COD-003;Pantalón Wide Leg Lino;Pantalón de lino corte amplio, cintura elástica invisible.;Pantalones;39800;;;No
+COD-004;Falda Plisada Midi;Falda plisada efecto satinado con cierre invisible.;Faldas;31500;36000;;Sí
+COD-005;Trench Clásico Beige;Trench coat clásico con botones forjados y cinturón.;Abrigos;89900;;;Sí
+COD-006;Sweater Punto Grande;Suéter de punto grueso cuello alto, 40% lana.;Abrigos;42500;;;Sí
+COD-007;Vestido Negro Cocktail;Vestido corto de cocktail en crep negro.;Vestidos;54900;62000;;No
+COD-008;Camisa Oversize Blanca;Camisa algodón popelina corte oversize.;Blusas;26900;;;Sí
+COD-009;Bolso Tote Cuero Eco;Tote amplio en cuero ecológico con bolsillo interno.;Accesorios;51200;58000;;Sí
+COD-010;Bufanda Pashmina;Bufanda pashmina estampada, 180×70 cm.;Accesorios;18900;;;Sí
+COD-011;Cinturón Hebilla Dorada;Cinturón ancho con hebilla dorada mate.;Accesorios;15800;;;No
+COD-012;Falda Denim Button Up;Falda jean media con botones frontales.;Faldas;34200;;;Sí
