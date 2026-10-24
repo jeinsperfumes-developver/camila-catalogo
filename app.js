@@ -992,7 +992,7 @@
       const blob = await r.blob();
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `cotizacion-${new Date().toISOString().slice(0, 10)}.mp3`;
+      a.download = `cotizacion-${new Date().toISOString().slice(0, 10)}.m4a`;
       document.body.appendChild(a);
       a.click();
       a.remove();
