@@ -34,9 +34,14 @@
       <button class="search-clear" id="btnLimpiarBusqueda" aria-label="Limpiar búsqueda" hidden>&times;</button>
     </div>
 
-    <button class="btn btn-primary btn-import-top" id="btnImportarTop">
+    <button class="btn btn-primary btn-import-top" id="btnImportarTop" data-solo-admin hidden>
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span>Importar</span>
+    </button>
+
+    <button class="btn-carrito" id="btnCarrito" aria-label="Abrir carrito de cotización" aria-expanded="false" aria-controls="carritoDrawer">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 22a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm10 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM1 1h3l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="carrito-badge" id="carritoBadge" hidden>0</span>
     </button>
   </header>
 
@@ -51,22 +56,27 @@
 
     <div class="drawer-body">
       <p class="drawer-section-title">Datos</p>
-      <button class="drawer-item" id="btnImportarMenu">
+      <button class="drawer-item" id="btnImportarMenu" data-solo-admin hidden>
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Importar Excel / CSV
       </button>
-      <button class="drawer-item" id="btnExportar">
+      <button class="drawer-item" id="btnExportar" data-solo-admin hidden>
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4l4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Exportar catálogo (CSV)
       </button>
-      <button class="drawer-item" id="btnPlantilla">
+      <button class="drawer-item" id="btnPlantilla" data-solo-admin hidden>
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6zm0 0v6h6M8 13h8M8 17h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Descargar plantilla
       </button>
-      <button class="drawer-item danger" id="btnVaciar">
+      <button class="drawer-item danger" id="btnVaciar" data-solo-admin hidden>
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Vaciar catálogo
       </button>
+      <button class="drawer-item" id="btnSalirAdmin" hidden>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Salir de admin
+      </button>
+      <p class="drawer-note" id="notaRol" hidden></p>
 
       <p class="drawer-section-title">Vista</p>
       <label class="drawer-toggle">
@@ -175,6 +185,43 @@
     </div>
   </div>
 
+  <!-- ===== Drawer carrito de cotización ===== -->
+  <div class="drawer-backdrop" id="carritoBackdrop" hidden></div>
+
+  <aside class="drawer drawer-carrito" id="carritoDrawer" aria-label="Carrito de cotización" aria-hidden="true">
+    <div class="drawer-header">
+      <span class="brand-name big">Tu cotización</span>
+      <button class="drawer-close" id="btnCerrarCarrito" aria-label="Cerrar carrito">&times;</button>
+    </div>
+    <div class="carrito-body">
+      <ul class="carrito-lista" id="carritoLista"></ul>
+      <p class="carrito-vacio" id="carritoVacio">Tu carrito está vacío.<br/>Agrega productos desde el catálogo.</p>
+      <div class="carrito-pie" id="carritoPie" hidden>
+        <div class="carrito-total"><span>Total</span><strong id="carritoTotal">$ 0</strong></div>
+        <button class="btn btn-primary btn-enviar-cot" id="btnEnviarCotizacion">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Enviar cotización por WhatsApp</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== Modal login admin ===== -->
+  <div class="modal-backdrop" id="loginBackdrop" hidden>
+    <div class="modal modal-login" role="dialog" aria-modal="true" aria-labelledby="loginTitulo">
+      <button class="modal-close" id="btnCerrarLogin" aria-label="Cerrar">&times;</button>
+      <div class="modal-contenido login-contenido">
+        <h2 id="loginTitulo">Modo administrador</h2>
+        <p class="login-sub">Ingresa la clave para importar, exportar o editar el catálogo.</p>
+        <form id="formLogin">
+          <input type="password" id="inputClave" placeholder="Clave de administrador" autocomplete="off" />
+          <button type="submit" class="btn btn-primary">Entrar</button>
+          <p class="login-error" id="loginError" hidden>Clave incorrecta.</p>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Input de archivo oculto -->
   <input type="file" id="inputArchivo" accept=".csv,.xlsx,.xls" hidden />
 
@@ -183,6 +230,12 @@
     <div class="spinner" role="status" aria-label="Procesando archivo"></div>
     <p>Procesando archivo…</p>
   </div>
+
+  <!-- Botón flotante: ver carrito (móvil) -->
+  <button class="btn-flotante-carrito" id="btnFlotanteCarrito" aria-label="Ver carrito" hidden>
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 22a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm10 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM1 1h3l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="carrito-badge" id="flotanteBadge">0</span>
+  </button>
 
   <!-- Toast -->
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>

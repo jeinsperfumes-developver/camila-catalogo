@@ -10,12 +10,20 @@
 
   const CLAVE_DATOS = "camila_catalogo_v1";
   const CLAVE_PREFS = "camila_prefs_v1";
+  const CLAVE_ROL = "camila_rol_v1";
+  const CLAVE_CARRITO = "camila_carrito_v1";
   const CSV_REPO = "catalogo.csv";
+  const CLAVE_ADMIN = "Camila2309";
+  const WHATSAPP_CAMILA = "573142768503"; // Camila: 314 276 8503 (Colombia +57)
+  const AUDIO_COTIZACION_URL = "https://mini.clmbilliards.online/cotizacion_audio";
 
   /** @type {Producto[]} */
   let productos = [];
   let categoriaActiva = "todas";
   let prefs = { moneda: "$ USD", mostrarPrecios: false };
+  let rol = "invitado"; // "invitado" | "admin"
+  /** @type {{codigo: string, nombre: string, precio: number, cant: number}[]} */
+  let carrito = [];
 
   /**
    * @typedef {Object} Producto
@@ -72,6 +80,28 @@
     modalPrecio: $("modalPrecio"),
     modalDescripcion: $("modalDescripcion"),
     modalMeta: $("modalMeta"),
+    modalContenido: document.querySelector("#modalProducto .modal-contenido"),
+    // Carrito / cotización
+    btnCarrito: $("btnCarrito"),
+    carritoBadge: $("carritoBadge"),
+    carritoBackdrop: $("carritoBackdrop"),
+    carritoDrawer: $("carritoDrawer"),
+    btnCerrarCarrito: $("btnCerrarCarrito"),
+    carritoLista: $("carritoLista"),
+    carritoVacio: $("carritoVacio"),
+    carritoPie: $("carritoPie"),
+    carritoTotal: $("carritoTotal"),
+    btnEnviarCotizacion: $("btnEnviarCotizacion"),
+    btnFlotanteCarrito: $("btnFlotanteCarrito"),
+    flotanteBadge: $("flotanteBadge"),
+    // Login admin
+    loginBackdrop: $("loginBackdrop"),
+    btnCerrarLogin: $("btnCerrarLogin"),
+    formLogin: $("formLogin"),
+    inputClave: $("inputClave"),
+    loginError: $("loginError"),
+    btnSalirAdmin: $("btnSalirAdmin"),
+    notaRol: $("notaRol"),
   };
 
   let temporizadorToast = null;
@@ -106,6 +136,7 @@
     precioAnterior: ["precioanterior", "precio anterior", "precio viejo", "oldprice", "old price", "preciotachado", "precio tachado", "oferta", "preciooferta", "precio oferta"],
     imagen: ["imagen", "image", "foto", "url imagen", "urlimagen", "img", "imageurl", "image url", "link imagen", "linkimagen", "imagenurl", "foto url"],
     stock: ["stock", "disponible", "cantidad", "inventory", "inventario", "existencia", "existencias"],
+    oculto: ["oculto", "oculto usuario", "hidden", "no visible"],
   };
 
   const normalizarClave = (s) =>
@@ -212,6 +243,7 @@
           precioAnterior: obj.precioAnterior ? parsearPrecio(obj.precioAnterior) : NaN,
           imagen: obj.imagen || "",
           stock: obj.stock || "",
+          oculto: /^(si|sí|true|1|x)$/i.test(obj.oculto || ""),
         };
       })
       .filter((p) => p.nombre !== "");
@@ -373,13 +405,14 @@
 
   function exportarCSV() {
     if (!productos.length) return toast("No hay productos para exportar.", true);
-    const filas = [["codigo", "nombre", "descripcion", "categoria", "precio", "precio anterior", "imagen", "stock"]];
+    const filas = [["codigo", "nombre", "descripcion", "categoria", "precio", "precio anterior", "imagen", "stock", "oculto"]];
     for (const p of productos) {
       filas.push([
         p.codigo, p.nombre, p.descripcion, p.categoria,
         Number.isFinite(p.precio) ? String(p.precio).replace(".", ",") : "",
         Number.isFinite(p.precioAnterior) ? String(p.precioAnterior).replace(".", ",") : "",
         p.imagen, p.stock,
+        p.oculto ? "si" : "",
       ]);
     }
     descargar("catalogo.csv", filas.map((f) => f.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n"));
@@ -404,6 +437,7 @@
     const filtroActivo = elementos.inputPrecioMax.value < 100;
 
     let lista = productos.filter((p) => {
+      if (rol !== "admin" && p.oculto) return false; // invitados no ven ocultos
       if (categoriaActiva !== "todas" && p.categoria !== categoriaActiva) return false;
       if (filtroActivo && Number.isFinite(p.precio) && p.precio > umbral) return false;
       if (q) {
@@ -475,7 +509,7 @@
 
   function tarjetaProducto(p, i) {
     const art = document.createElement("article");
-    art.className = "tarjeta";
+    art.className = "tarjeta" + (rol === "admin" && p.oculto ? " oculto-admin" : "");
     art.style.animationDelay = `${Math.min(i, 12) * 30}ms`;
     art.tabIndex = 0;
     art.setAttribute("aria-label", p.nombre);
@@ -507,7 +541,18 @@
           ${precioHTML ? `<span class="tarjeta-precio">${escapar(precioHTML)}${anterior}</span>` : ""}
           ${stock}
         </div>
+        <button class="btn-agregar${carrito.some((i) => claveProducto(i) === claveProducto(p)) ? " agregado" : ""}" type="button">
+          ${carrito.some((i) => claveProducto(i) === claveProducto(p)) ? "En la cotización ✓" : "Agregar a cotización"}
+        </button>
       </div>`;
+
+    const btnAgregar = art.querySelector(".btn-agregar");
+    btnAgregar.addEventListener("click", (e) => {
+      e.stopPropagation();
+      agregarAlCarrito(p);
+      btnAgregar.classList.add("agregado");
+      btnAgregar.textContent = "En la cotización ✓";
+    });
 
     art.addEventListener("click", () => abrirModal(p));
     art.addEventListener("keydown", (e) => {
@@ -591,6 +636,33 @@
       metas.push(`Antes: ${formatearPrecio(p.precioAnterior)}`);
     elementos.modalMeta.innerHTML = metas.map(escapar).join("<br/>");
 
+    // Botón agregar al carrito dentro del modal
+    const yaEsta = carrito.some((i) => claveProducto(i) === claveProducto(p));
+    elementos.modalMeta.insertAdjacentHTML("afterend",
+      `<button class="btn-agregar${yaEsta ? " agregado" : ""}" id="btnAgregarModal" type="button">
+         ${yaEsta ? "En la cotización ✓" : "Agregar a cotización"}
+       </button>`);
+    const btnViejo = $("btnAgregarModal");
+    if (btnViejo) btnViejo.remove(); // limpieza previa (no debería ocurrir)
+    const btnModal = $("btnAgregarModal");
+    if (btnModal) btnModal.addEventListener("click", () => {
+      agregarAlCarrito(p);
+      btnModal.classList.add("agregado");
+      btnModal.textContent = "En la cotización ✓";
+    });
+
+    // Panel admin: editar / ocultar / eliminar (visible solo en modo admin)
+    const editorViejo = document.getElementById("editorProducto");
+    if (editorViejo) editorViejo.remove();
+    elementos.modalMeta.insertAdjacentHTML("afterend",
+      `<button class="btn-editar-admin" id="btnEditarAdmin" type="button" ${rol === "admin" ? "" : "hidden"}>
+         ✎ Editar producto (admin)
+       </button>`);
+    const btnEditarViejo = $("btnEditarAdmin");
+    if (btnEditarViejo && btnEditarViejo !== $("btnEditarAdmin")) btnEditarViejo.remove();
+    const btnEditar = $("btnEditarAdmin");
+    if (btnEditar) btnEditar.addEventListener("click", () => abrirEditorProducto(p));
+
     elementos.modalBackdrop.hidden = false;
     requestAnimationFrame(() => elementos.modalBackdrop.classList.add("visible"));
     document.body.style.overflow = "hidden";
@@ -601,6 +673,112 @@
     elementos.modalBackdrop.classList.remove("visible");
     document.body.style.overflow = "";
     setTimeout(() => (elementos.modalBackdrop.hidden = true), 280);
+  }
+
+  /* ---------------- Edición admin (modal detalle) ---------------- */
+
+  function guardarProductoEditado(p, cambios) {
+    Object.assign(p, cambios);
+    if (!p.oculto) p.oculto = false;
+    guardarDatos();
+    renderizarTodo();
+  }
+
+  function eliminarProducto(p) {
+    if (!confirm(`¿Eliminar "${p.nombre}" del catálogo? Esta acción no se puede deshacer.`)) return;
+    productos = productos.filter((x) => x !== p && (p.codigo ? x.codigo !== p.codigo : true));
+    quitarDelCarrito(claveProducto(p));
+    guardarDatos();
+    cerrarModal();
+    renderizarTodo();
+    toast(`"${p.nombre}" eliminado del catálogo.`);
+  }
+
+  function abrirEditorProducto(p) {
+    // Render del formulario de edición dentro del modal (solo admin)
+    let cont = document.getElementById("editorProducto");
+    if (cont) cont.remove();
+    cont = document.createElement("div");
+    cont.id = "editorProducto";
+    cont.className = "editor-producto";
+    cont.innerHTML = `
+      <h3>Editar producto</h3>
+      <label>Nombre
+        <input type="text" id="editNombre" value="${escapar(p.nombre)}" />
+      </label>
+      <label>Categoría
+        <input type="text" id="editCategoria" value="${escapar(p.categoria || "")}" list="listaCategorias" />
+        <datalist id="listaCategorias">
+          ${[...new Set(productos.map((x) => x.categoria).filter(Boolean))]
+            .map((c) => `<option value="${escapar(c)}"></option>`).join("")}
+        </datalist>
+      </label>
+      <label>Descripción
+        <textarea id="editDescripcion" rows="2">${escapar(p.descripcion || "")}</textarea>
+      </label>
+      <label>Precio
+        <input type="text" id="editPrecio" inputmode="decimal" value="${Number.isFinite(p.precio) ? p.precio : ""}" />
+      </label>
+      <label>Foto (URL o ruta relativa)
+        <input type="text" id="editImagen" value="${escapar(p.imagen || "")}" placeholder="https://… o imagenes/…" />
+      </label>
+      <label>O subir foto desde el dispositivo
+        <input type="file" id="editFotoArchivo" accept="image/*" />
+      </label>
+      <label>Precio anterior (opcional)
+        <input type="text" id="editPrecioAnterior" inputmode="decimal" value="${Number.isFinite(p.precioAnterior) ? p.precioAnterior : ""}" />
+      </label>
+      <label>Stock
+        <input type="text" id="editStock" value="${escapar(p.stock || "")}" placeholder="Sí / No / cantidad" />
+      </label>
+      <div class="editor-botones">
+        <button type="button" class="btn-agregar" id="editGuardar">Guardar cambios</button>
+        <button type="button" class="btn-quitar" id="editOcultar">${p.oculto ? "Mostrar a clientes" : "Ocultar a clientes"}</button>
+        <button type="button" class="btn-quitar" id="editEliminar">Eliminar producto</button>
+        <button type="button" class="btn-quitar" id="editCancelar">Cerrar editor</button>
+      </div>`;
+
+    elementos.modalContenido.appendChild(cont);
+
+    $("editGuardar").addEventListener("click", () => {
+      const cambios = {
+        nombre: $("editNombre").value.trim() || p.nombre,
+        categoria: $("editCategoria").value.trim() || "Sin categoría",
+        descripcion: $("editDescripcion").value.trim(),
+        precio: parsearPrecio($("editPrecio").value),
+        precioAnterior: parsearPrecio($("editPrecioAnterior").value),
+        imagen: $("editImagen").value.trim(),
+        stock: $("editStock").value.trim(),
+      };
+      guardarProductoEditado(p, cambios);
+      cerrarModal();
+      toast(`"${cambios.nombre}" actualizado.`);
+    });
+
+    $("editOcultar").addEventListener("click", (e) => {
+      p.oculto = !p.oculto;
+      guardarDatos();
+      renderizarTodo();
+      e.target.textContent = p.oculto ? "Mostrar a clientes" : "Ocultar a clientes";
+      toast(p.oculto ? `"${p.nombre}" oculto para clientes.` : `"${p.nombre}" visible de nuevo.`);
+    });
+
+    $("editEliminar").addEventListener("click", () => eliminarProducto(p));
+    $("editCancelar").addEventListener("click", () => cont.remove());
+
+    $("editFotoArchivo").addEventListener("change", (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      if (f.size > 2_500_000) return toast("Foto muy pesada (>2.5 MB): usa una URL o comprímela.", true);
+      const lector = new FileReader();
+      lector.onload = (ev) => {
+        $("editImagen").value = String(ev.target.result);
+        toast("Foto cargada. Recuerda guardar cambios.");
+      };
+      lector.readAsDataURL(f);
+    });
+
+    cont.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
   /* ---------------- Drawer (menú hamburguesa) ---------------- */
@@ -626,6 +804,203 @@
   }
 
   const abierto = () => elementos.drawer.classList.contains("abierto");
+
+  /* ---------------- Roles: invitado / admin ---------------- */
+
+  function aplicarRol() {
+    const esAdmin = rol === "admin";
+    document.querySelectorAll("[data-solo-admin]").forEach((el) => (el.hidden = !esAdmin));
+    elementos.btnSalirAdmin.hidden = !esAdmin;
+    elementos.notaRol.hidden = esAdmin;
+    if (!esAdmin) {
+      elementos.notaRol.innerHTML =
+        'Estás como <strong>invitado</strong>: puedes filtrar productos y armar tu cotización.<br/><button class="btn-quitar" id="btnPedirAdmin" type="button">Soy Camila (entrar como admin)</button>';
+      const b = $("btnPedirAdmin");
+      if (b) b.addEventListener("click", () => { cerrarDrawer(); abrirLogin(); });
+    }
+    // El rol cambia qué productos se ven (ocultos) → re-renderizar
+    renderizarTodo();
+  }
+
+  function abrirLogin() {
+    elementos.loginBackdrop.hidden = false;
+    elementos.loginError.hidden = true;
+    elementos.inputClave.value = "";
+    requestAnimationFrame(() => elementos.loginBackdrop.classList.add("visible"));
+    setTimeout(() => elementos.inputClave.focus(), 60);
+  }
+
+  function cerrarLogin() {
+    elementos.loginBackdrop.classList.remove("visible");
+    setTimeout(() => (elementos.loginBackdrop.hidden = true), 280);
+  }
+
+  function intentarLogin(clave) {
+    if (clave === CLAVE_ADMIN) {
+      rol = "admin";
+      try { localStorage.setItem(CLAVE_ROL, rol); } catch { }
+      cerrarLogin();
+      aplicarRol();
+      toast("Modo administrador activo.");
+    } else {
+      elementos.loginError.hidden = false;
+      elementos.inputClave.select();
+    }
+  }
+
+  function salirAdmin() {
+    rol = "invitado";
+    try { localStorage.setItem(CLAVE_ROL, rol); } catch { }
+    aplicarRol();
+    cerrarDrawer();
+    toast("Volviste al modo invitado.");
+  }
+
+  /* ---------------- Carrito de cotización ---------------- */
+
+  function guardarCarrito() {
+    try { localStorage.setItem(CLAVE_CARRITO, JSON.stringify(carrito)); } catch { }
+  }
+
+  function cargarCarrito() {
+    try {
+      const crudo = localStorage.getItem(CLAVE_CARRITO);
+      const datos = crudo ? JSON.parse(crudo) : [];
+      if (Array.isArray(datos)) carrito = datos.filter((i) => i && i.codigo && i.cant > 0);
+    } catch { carrito = []; }
+  }
+
+  const totalCarrito = () =>
+    carrito.reduce((t, i) => t + (Number.isFinite(i.precio) ? i.precio * i.cant : 0), 0);
+
+  const unidadesCarrito = () => carrito.reduce((t, i) => t + i.cant, 0);
+
+  // Clave única del producto: codigo si existe, si no el nombre
+  const claveProducto = (p) => p.codigo || p.nombre;
+
+  function agregarAlCarrito(p, cant = 1) {
+    const item = carrito.find((i) => claveProducto(i) === claveProducto(p));
+    if (item) item.cant += cant;
+    else carrito.push({ codigo: p.codigo, nombre: p.nombre, precio: p.precio, cant });
+    guardarCarrito();
+    renderizarCarrito();
+    toast(`${p.nombre} agregado a la cotización.`);
+  }
+
+  function cambiarCantidad(codigo, delta) {
+    const item = carrito.find((i) => claveProducto(i) === codigo);
+    if (!item) return;
+    item.cant += delta;
+    if (item.cant <= 0) carrito = carrito.filter((i) => claveProducto(i) !== codigo);
+    guardarCarrito();
+    renderizarCarrito();
+  }
+
+  function quitarDelCarrito(codigo) {
+    carrito = carrito.filter((i) => claveProducto(i) !== codigo);
+    guardarCarrito();
+    renderizarCarrito();
+  }
+
+  function renderizarCarrito() {
+    const n = unidadesCarrito();
+    elementos.carritoBadge.textContent = n > 99 ? "99+" : String(n);
+    elementos.carritoBadge.hidden = n === 0;
+    elementos.flotanteBadge.textContent = n > 99 ? "99+" : String(n);
+
+    const hay = carrito.length > 0;
+    elementos.carritoVacio.hidden = hay;
+    elementos.carritoPie.hidden = !hay;
+
+    elementos.carritoLista.replaceChildren();
+    for (const item of carrito) {
+      const li = document.createElement("li");
+      li.className = "carrito-item";
+      li.innerHTML = `
+        <span class="carrito-item-nombre">${escapar(item.nombre)}</span>
+        <span class="carrito-item-precio">${Number.isFinite(item.precio) ? escapar(formatearPrecio(item.precio * item.cant)) : "—"}</span>
+        ${item.codigo ? `<span class="carrito-item-codigo">${escapar(item.codigo)}</span>` : ""}
+        <div class="carrito-controles">
+          <button class="btn-cant" data-accion="menos" aria-label="Quitar uno">−</button>
+          <span class="carrito-cant">${item.cant}</span>
+          <button class="btn-cant" data-accion="mas" aria-label="Agregar uno">+</button>
+          <button class="btn-quitar" data-accion="quitar">Quitar</button>
+        </div>`;
+      const clave = claveProducto(item);
+      li.querySelector('[data-accion="menos"]').addEventListener("click", () => cambiarCantidad(clave, -1));
+      li.querySelector('[data-accion="mas"]').addEventListener("click", () => cambiarCantidad(clave, 1));
+      li.querySelector('[data-accion="quitar"]').addEventListener("click", () => quitarDelCarrito(clave));
+      elementos.carritoLista.appendChild(li);
+    }
+
+    elementos.carritoTotal.textContent = formatearPrecio(totalCarrito()) || "A consultar";
+    elementos.btnFlotanteCarrito.classList.toggle("visible", n > 0);
+  }
+
+  function abrirCarrito() {
+    elementos.carritoBackdrop.hidden = false;
+    elementos.carritoDrawer.classList.add("abierto");
+    elementos.carritoDrawer.setAttribute("aria-hidden", "false");
+    elementos.btnCarrito.setAttribute("aria-expanded", "true");
+    document.body.style.overflow = "hidden";
+    requestAnimationFrame(() => elementos.carritoBackdrop.classList.add("visible"));
+    elementos.btnCerrarCarrito.focus();
+  }
+
+  function cerrarCarrito() {
+    elementos.carritoBackdrop.classList.remove("visible");
+    elementos.carritoDrawer.classList.remove("abierto");
+    elementos.carritoDrawer.setAttribute("aria-hidden", "true");
+    elementos.btnCarrito.setAttribute("aria-expanded", "false");
+    document.body.style.overflow = "";
+    setTimeout(() => (elementos.carritoBackdrop.hidden = true), 340);
+  }
+
+  /* ---------------- Cotización → WhatsApp + audio ---------------- */
+
+  function textoCotizacion() {
+    const fecha = new Date().toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" });
+    const lineas = carrito.map((i) => {
+      const precio = Number.isFinite(i.precio)
+        ? ` — ${prefs.moneda} ${new Intl.NumberFormat("es-CO").format(i.precio * i.cant)}`
+        : "";
+      return `• ${i.cant} × ${i.nombre}${i.codigo ? ` (${i.codigo})` : ""}${precio}`;
+    });
+    const total = totalCarrito();
+    const lineaTotal = Number.isFinite(total) && total > 0
+      ? `\n\n*Total: ${prefs.moneda} ${new Intl.NumberFormat("es-CO").format(total)}*`
+      : "\n\n*(precios a confirmar)*";
+    return `¡Hola Camila! Quiero cotizar estos productos del catálogo (${fecha}):\n\n${lineas.join("\n")}${lineaTotal}\n\n¿Me confirmas disponibilidad y tiempo de entrega? ¡Gracias!`;
+  }
+
+  async function enviarCotizacion() {
+    if (!carrito.length) return toast("Tu carrito está vacío.", true);
+    const texto = textoCotizacion();
+    // 1) WhatsApp con el detalle (siempre): abre la app con el mensaje listo
+    const url = `https://wa.me/${WHATSAPP_CAMILA}?text=${encodeURIComponent(texto)}`;
+    const vent = window.open(url, "_blank");
+
+    // 2) Audio con el resumen (voz de Jeisson, sintetizado en la Mac):
+    // se descarga para adjuntarlo al mismo chat de WhatsApp.
+    try {
+      const r = await fetch(AUDIO_COTIZACION_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const blob = await r.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `cotizacion-${new Date().toISOString().slice(0, 10)}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast("Audio de la cotización descargado: adjúntalo en el chat de WhatsApp.");
+    } catch {
+      toast(vent ? "WhatsApp abierto. El audio no se pudo generar (Mac desconectada)." : "WhatsApp abierto.", !vent);
+    }
+  }
 
   /* ---------------- Inicialización ---------------- */
 
@@ -724,7 +1099,9 @@
     // Teclado global
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
-        if (!elementos.modalBackdrop.hidden) cerrarModal();
+        if (!elementos.loginBackdrop.hidden) cerrarLogin();
+        else if (elementos.carritoDrawer.classList.contains("abierto")) cerrarCarrito();
+        else if (!elementos.modalBackdrop.hidden) cerrarModal();
         else if (abierto()) cerrarDrawer();
       }
       // Atajos: / enfoca búsqueda
@@ -733,6 +1110,24 @@
         elementos.inputBusqueda.focus();
       }
     });
+
+    // Carrito
+    elementos.btnCarrito.addEventListener("click", abrirCarrito);
+    elementos.btnFlotanteCarrito.addEventListener("click", abrirCarrito);
+    elementos.btnCerrarCarrito.addEventListener("click", cerrarCarrito);
+    elementos.carritoBackdrop.addEventListener("click", cerrarCarrito);
+    elementos.btnEnviarCotizacion.addEventListener("click", enviarCotizacion);
+
+    // Login admin
+    elementos.btnCerrarLogin.addEventListener("click", cerrarLogin);
+    elementos.loginBackdrop.addEventListener("click", (e) => {
+      if (e.target === elementos.loginBackdrop) cerrarLogin();
+    });
+    elementos.formLogin.addEventListener("submit", (e) => {
+      e.preventDefault();
+      intentarLogin(elementos.inputClave.value);
+    });
+    elementos.btnSalirAdmin.addEventListener("click", salirAdmin);
 
     // Cerrar el menú al navegar con hashes internos si hiciera falta
     window.addEventListener("hashchange", cerrarDrawer);
@@ -769,6 +1164,11 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     conectarEventos();
+    // Rol persistido (invitado por defecto) y carrito guardado
+    try { rol = localStorage.getItem(CLAVE_ROL) === "admin" ? "admin" : "invitado"; } catch { }
+    aplicarRol();
+    cargarCarrito();
+    renderizarCarrito();
     cargarInicial();
     renderizarTodo();
   });
