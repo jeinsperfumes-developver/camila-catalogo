@@ -8,7 +8,7 @@
 
   /* ---------------- Estado ---------------- */
 
-  const CLAVE_DATOS = "camila_catalogo_v1";
+  const CLAVE_DATOS = "camila_catalogo_v2"; // v2: columna imagen2 (carruseles)
   const CLAVE_PREFS = "camila_prefs_v1";
   const CLAVE_ROL = "camila_rol_v1";
   const CLAVE_CARRITO = "camila_carrito_v1";
@@ -41,6 +41,7 @@
    * @property {number} precio
    * @property {number|null} precioAnterior
    * @property {string} imagen
+   * @property {string} imagen2
    * @property {string} stock
    */
 
@@ -143,6 +144,7 @@
     precio: ["precio", "price", "valor", "preciounitario", "precio unitario", "costo", "pvp", "venta", "importe"],
     precioAnterior: ["precioanterior", "precio anterior", "precio viejo", "oldprice", "old price", "preciotachado", "precio tachado", "oferta", "preciooferta", "precio oferta"],
     imagen: ["imagen", "image", "foto", "url imagen", "urlimagen", "img", "imageurl", "image url", "link imagen", "linkimagen", "imagenurl", "foto url"],
+    imagen2: ["imagen2", "imagen 2", "image2", "image 2", "foto2", "foto 2", "segunda imagen"],
     stock: ["stock", "disponible", "cantidad", "inventory", "inventario", "existencia", "existencias"],
     oculto: ["oculto", "oculto usuario", "hidden", "no visible"],
   };
@@ -250,6 +252,7 @@
           precio: parsearPrecio(obj.precio),
           precioAnterior: obj.precioAnterior ? parsearPrecio(obj.precioAnterior) : NaN,
           imagen: obj.imagen || "",
+          imagen2: obj.imagen2 || "",
           stock: obj.stock || "",
           oculto: /^(si|sí|true|1|x)$/i.test(obj.oculto || ""),
         };
@@ -447,13 +450,13 @@
 
   function exportarCSV() {
     if (!productos.length) return toast("No hay productos para exportar.", true);
-    const filas = [["codigo", "nombre", "descripcion", "categoria", "precio", "precio anterior", "imagen", "stock", "oculto"]];
+    const filas = [["codigo", "nombre", "descripcion", "categoria", "precio", "precio anterior", "imagen", "imagen2", "stock", "oculto"]];
     for (const p of productos) {
       filas.push([
         p.codigo, p.nombre, p.descripcion, p.categoria,
         Number.isFinite(p.precio) ? String(p.precio).replace(".", ",") : "",
         Number.isFinite(p.precioAnterior) ? String(p.precioAnterior).replace(".", ",") : "",
-        p.imagen, p.stock,
+        p.imagen, p.imagen2 || "", p.stock,
         p.oculto ? "si" : "",
       ]);
     }
@@ -549,6 +552,68 @@
   const esFotoValida = (imagen) =>
     /^https?:\/\/.+/.test(imagen) || /^(?!\/)[\w][\w\/ .-]*\.(jpe?g|png|webp|avif|gif|svg)$/i.test(imagen.trim());
 
+  // Lista de fotos válidas de un producto (imagen + imagen2, sin vacíos ni duplicados)
+  function fotosProducto(p) {
+    const fotos = [p.imagen, p.imagen2]
+      .map((f) => String(f ?? "").trim())
+      .filter((f) => f && esFotoValida(f));
+    return [...new Set(fotos)];
+  }
+
+  // Carrusel genérico: mueve la pista, actualiza puntos y wrap-around.
+  // El swipe no abre el modal de detalle (solo un tap sin arrastre lo hace).
+  function conectarCarrusel(root, total) {
+    const pista = root.querySelector(".carrusel-pista");
+    const puntos = [...root.querySelectorAll(".carrusel-punto")];
+    let indice = 0;
+
+    function irA(n) {
+      indice = ((n % total) + total) % total;
+      pista.style.transform = `translateX(-${indice * 100}%)`;
+      puntos.forEach((p, j) => p.classList.toggle("activo", j === indice));
+    }
+
+    root.querySelector(".carrusel-flecha.prev").addEventListener("click", (e) => {
+      e.stopPropagation();
+      irA(indice - 1);
+    });
+    root.querySelector(".carrusel-flecha.next").addEventListener("click", (e) => {
+      e.stopPropagation();
+      irA(indice + 1);
+    });
+    puntos.forEach((p, j) => p.addEventListener("click", (e) => {
+      e.stopPropagation();
+      irA(j);
+    }));
+
+    // Swipe táctil (touch) y arrastre con mouse
+    let x0 = null, arrastro = false;
+    const UMBRAL_SWIPE = 30;
+    root.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; arrastro = false; }, { passive: true });
+    root.addEventListener("touchmove", (e) => {
+      if (x0 === null) return;
+      if (Math.abs(e.touches[0].clientX - x0) > UMBRAL_SWIPE) arrastro = true;
+    }, { passive: true });
+    root.addEventListener("touchend", (e) => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > UMBRAL_SWIPE) irA(dx < 0 ? indice + 1 : indice - 1);
+      x0 = null;
+    });
+    // Evita que un swipe cuente como tap (y abra el modal)
+    root.addEventListener("click", (e) => { if (arrastro) { e.stopPropagation(); arrastro = false; } }, true);
+
+    // Mouse drag (desktop): arrastra para pasar foto
+    let mx0 = null;
+    root.addEventListener("mousedown", (e) => { mx0 = e.clientX; e.preventDefault(); });
+    root.addEventListener("mouseup", (e) => {
+      if (mx0 === null) return;
+      const dx = e.clientX - mx0;
+      if (Math.abs(dx) > UMBRAL_SWIPE) { irA(dx < 0 ? indice + 1 : indice - 1); arrastro = true; }
+      mx0 = null;
+    });
+  }
+
   function tarjetaProducto(p, i) {
     const art = document.createElement("article");
     art.className = "tarjeta" + (rol === "admin" && p.oculto ? " oculto-admin" : "");
@@ -556,12 +621,27 @@
     art.tabIndex = 0;
     art.setAttribute("aria-label", p.nombre);
 
-    const tieneFoto = esFotoValida(p.imagen);
+    const fotos = fotosProducto(p);
     const agotado = /^(no|0|sin|false|agotado)/i.test(p.stock.trim());
 
-    const media = tieneFoto
-      ? `<img src="${escapar(p.imagen.trim())}" alt="${escapar(p.nombre)}" loading="lazy" onerror="this.remove()" />`
-      : `<span class="sin-foto">${escapar(inicialChulis(p.nombre))}</span>`;
+    let media;
+    if (fotos.length > 1) {
+      const slides = fotos
+        .map((f, j) => `<img src="${escapar(f)}" alt="${escapar(p.nombre)}${fotos.length > 1 ? ` (foto ${j + 1})` : ""}" loading="lazy" onerror="this.remove()" />`)
+        .join("");
+      const puntos = fotos.map((_, j) => `<span class="carrusel-punto${j === 0 ? " activo" : ""}"></span>`).join("");
+      media = `
+        <div class="carrusel" data-indice="0">
+          <div class="carrusel-pista">${slides}</div>
+          <button class="carrusel-flecha prev" type="button" aria-label="Foto anterior">‹</button>
+          <button class="carrusel-flecha next" type="button" aria-label="Foto siguiente">›</button>
+          <div class="carrusel-puntos">${puntos}</div>
+        </div>`;
+    } else if (fotos.length === 1) {
+      media = `<img src="${escapar(fotos[0])}" alt="${escapar(p.nombre)}" loading="lazy" onerror="this.remove()" />`;
+    } else {
+      media = `<span class="sin-foto">${escapar(inicialChulis(p.nombre))}</span>`;
+    }
 
     const badge = p.categoria && p.categoria !== "Sin categoría"
       ? `<span class="tarjeta-badge">${escapar(p.categoria)}</span>` : "";
@@ -587,6 +667,10 @@
           ${carrito.some((i) => claveProducto(i) === claveProducto(p)) ? "En la cotización ✓" : "Agregar a cotización"}
         </button>
       </div>`;
+
+    // Carrusel: flechas, puntos y swipe táctil (no abre el modal)
+    const carrusel = art.querySelector(".carrusel");
+    if (carrusel) conectarCarrusel(carrusel, fotos.length);
 
     const btnAgregar = art.querySelector(".btn-agregar");
     btnAgregar.addEventListener("click", (e) => {
@@ -660,10 +744,25 @@
   /* ---------------- Modal detalle ---------------- */
 
   function abrirModal(p) {
-    const tieneFoto = esFotoValida(p.imagen);
-    elementos.modalMedia.innerHTML = tieneFoto
-      ? `<img src="${escapar(p.imagen)}" alt="${escapar(p.nombre)}" />`
-      : `<span class="sin-foto">${escapar(inicialChulis(p.nombre))}</span>`;
+    const fotos = fotosProducto(p);
+    if (fotos.length > 1) {
+      const slides = fotos
+        .map((f, j) => `<img src="${escapar(f)}" alt="${escapar(p.nombre)} (foto ${j + 1})" />`)
+        .join("");
+      const puntos = fotos.map((_, j) => `<span class="carrusel-punto${j === 0 ? " activo" : ""}"></span>`).join("");
+      elementos.modalMedia.innerHTML = `
+        <div class="carrusel" data-indice="0">
+          <div class="carrusel-pista">${slides}</div>
+          <button class="carrusel-flecha prev" type="button" aria-label="Foto anterior">‹</button>
+          <button class="carrusel-flecha next" type="button" aria-label="Foto siguiente">›</button>
+          <div class="carrusel-puntos">${puntos}</div>
+        </div>`;
+      conectarCarrusel(elementos.modalMedia.querySelector(".carrusel"), fotos.length);
+    } else if (fotos.length === 1) {
+      elementos.modalMedia.innerHTML = `<img src="${escapar(fotos[0])}" alt="${escapar(p.nombre)}" />`;
+    } else {
+      elementos.modalMedia.innerHTML = `<span class="sin-foto">${escapar(inicialChulis(p.nombre))}</span>`;
+    }
 
     elementos.modalCategoria.textContent = p.categoria || "";
     elementos.modalTitulo.textContent = p.nombre;
@@ -764,6 +863,9 @@
       <label>Foto (URL o ruta relativa)
         <input type="text" id="editImagen" value="${escapar(p.imagen || "")}" placeholder="https://… o imagenes/…" />
       </label>
+      <label>Segunda foto (opcional, para el carrusel)
+        <input type="text" id="editImagen2" value="${escapar(p.imagen2 || "")}" placeholder="https://… o imagenes/…" />
+      </label>
       <label>O subir foto desde el dispositivo
         <input type="file" id="editFotoArchivo" accept="image/*" />
       </label>
@@ -790,6 +892,7 @@
         precio: parsearPrecio($("editPrecio").value),
         precioAnterior: parsearPrecio($("editPrecioAnterior").value),
         imagen: $("editImagen").value.trim(),
+        imagen2: $("editImagen2").value.trim(),
         stock: $("editStock").value.trim(),
       };
       guardarProductoEditado(p, cambios);
