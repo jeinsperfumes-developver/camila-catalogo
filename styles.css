@@ -1217,6 +1217,36 @@ button { font-family: inherit; cursor: pointer; }
 
 .btn-enviar-cot { width: 100%; justify-content: center; }
 
+/* Selector de destino de cotización (WhatsApp) */
+.destino-cot {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.destino-pill {
+  flex: 1 1 45%;
+  padding: 8px 10px;
+  border: 1px solid rgba(38, 32, 27, 0.18);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tinta-suave);
+  font: 600 0.78rem/1.2 var(--font-cuerpo);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.destino-pill:hover { border-color: var(--acento); color: var(--tinta); }
+
+.destino-pill.activo {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: var(--tinta);
+}
+
 /* Botón agregar en tarjetas y modal */
 .btn-agregar {
   border: 1px solid var(--borde-fuerte);

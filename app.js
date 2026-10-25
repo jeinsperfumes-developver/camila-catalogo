@@ -12,15 +12,22 @@
   const CLAVE_PREFS = "camila_prefs_v1";
   const CLAVE_ROL = "camila_rol_v1";
   const CLAVE_CARRITO = "camila_carrito_v1";
+  const CLAVE_DESTINO = "camila_destino_v1";
   const CSV_REPO = "catalogo.csv";
   const CLAVE_ADMIN = "Camila2309";
   const WHATSAPP_CAMILA = "573142768503"; // Camila: 314 276 8503 (Colombia +57)
+  const WHATSAPP_PRUEBAS = "573123887226"; // Pruebas (antes del deploy): 312 388 7226
+  const DESTINOS_WHATSAPP = [
+    { id: "camila", nombre: "Camila (314 276 8503)", num: WHATSAPP_CAMILA },
+    { id: "pruebas", nombre: "Yo · pruebas (312 388 7226)", num: WHATSAPP_PRUEBAS },
+  ];
   const AUDIO_COTIZACION_URL = "https://mini.clmbilliards.online/cotizacion_audio";
 
   /** @type {Producto[]} */
   let productos = [];
   let categoriaActiva = "todas";
   let prefs = { moneda: "$ USD", mostrarPrecios: false };
+  let destinoCotizacion = "camila";
   let rol = "invitado"; // "invitado" | "admin"
   /** @type {{codigo: string, nombre: string, precio: number, cant: number}[]} */
   let carrito = [];
@@ -92,6 +99,7 @@
     carritoPie: $("carritoPie"),
     carritoTotal: $("carritoTotal"),
     btnEnviarCotizacion: $("btnEnviarCotizacion"),
+    destinoCot: $("destinoCot"),
     btnFlotanteCarrito: $("btnFlotanteCarrito"),
     flotanteBadge: $("flotanteBadge"),
     // Login admin
@@ -345,6 +353,40 @@
     } catch { /* ignorar */ }
     elementos.selMoneda.value = prefs.moneda;
     elementos.chkPrecios.checked = prefs.mostrarPrecios;
+  }
+
+  /* ---------------- Destino de cotización (WhatsApp) ---------------- */
+
+  function destinoActivo() {
+    return DESTINOS_WHATSAPP.find((d) => d.id === destinoCotizacion) || DESTINOS_WHATSAPP[0];
+  }
+
+  function renderizarDestinoCot() {
+    const cont = elementos.destinoCot;
+    cont.innerHTML = "";
+    DESTINOS_WHATSAPP.forEach((d) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "destino-pill";
+      b.textContent = d.nombre;
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", String(d.id === destinoCotizacion));
+      b.classList.toggle("activo", d.id === destinoCotizacion);
+      b.addEventListener("click", () => {
+        destinoCotizacion = d.id;
+        try { localStorage.setItem(CLAVE_DESTINO, d.id); } catch { /* ignorar */ }
+        renderizarDestinoCot();
+      });
+      cont.appendChild(b);
+    });
+  }
+
+  function cargarDestino() {
+    try {
+      const guardado = localStorage.getItem(CLAVE_DESTINO);
+      if (guardado && DESTINOS_WHATSAPP.some((d) => d.id === guardado)) destinoCotizacion = guardado;
+    } catch { /* ignorar */ }
+    renderizarDestinoCot();
   }
 
   function guardarPrefs() {
@@ -977,7 +1019,7 @@
     if (!carrito.length) return toast("Tu carrito está vacío.", true);
     const texto = textoCotizacion();
     // 1) WhatsApp con el detalle (siempre): abre la app con el mensaje listo
-    const url = `https://wa.me/${WHATSAPP_CAMILA}?text=${encodeURIComponent(texto)}`;
+    const url = `https://wa.me/${destinoActivo().num}?text=${encodeURIComponent(texto)}`;
     const vent = window.open(url, "_blank");
 
     // 2) Audio con el resumen (voz de Jeisson, sintetizado en la Mac):
@@ -1135,6 +1177,7 @@
 
   function cargarInicial() {
     cargarPrefs();
+    cargarDestino();
 
     // 1) Datos guardados en este navegador
     try {
