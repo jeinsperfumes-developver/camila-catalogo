@@ -557,7 +557,8 @@
     const fotos = [p.imagen, p.imagen2]
       .map((f) => String(f ?? "").trim())
       .filter((f) => f && esFotoValida(f));
-    return [...new Set(fotos)];
+    // Orden invertido: la última foto del carrusel se muestra primero.
+    return [...new Set(fotos)].reverse();
   }
 
   // Carrusel genérico: mueve la pista, actualiza puntos y wrap-around.
