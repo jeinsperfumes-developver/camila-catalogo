@@ -24,6 +24,9 @@ const path = require("path");
 const CSV = path.join(__dirname, "..", "catalogo.csv");
 const CACHE = path.join(__dirname, "imagenes_encontradas.json");
 const DIR_WEB = path.join(__dirname, "..", "imagenes", "web");
+// Ronda 2 (2026-10-25): fotos para carrusel — nuevos y los que ya tenían una
+const DIR_WEB3 = path.join(__dirname, "..", "imagenes", "web3");
+const PROGRESO = path.join(__dirname, "progreso_web3.json");
 
 const UMBRAL = 0.4;      // score mínimo para aceptar la imagen
 const DELAY = 400;       // ms entre queries por worker
@@ -125,7 +128,8 @@ function queryPara(nombre) {
     .replace(/\s+/g, " ")
     .trim();
   if (n.length > 80) n = n.slice(0, 80);
-  return `${n} perfume bottle`;
+  // "perfume" primero: mejores coincidencias en DDG/Bing
+  return `perfume ${n} bottle`;
 }
 
 /* ---------- HTTP ---------- */
@@ -321,6 +325,7 @@ async function main() {
   const aplicar = args.includes("--aplicar");
   const descargar = args.includes("--descargar");
   const prueba = args.includes("--prueba");
+  const ronda2 = args.includes("--ronda2");
 
   const { head, filas, idx } = leerCatalogo();
   cargarCache();
@@ -365,6 +370,95 @@ async function main() {
     const lineas = [head.join(";"), ...out.map((f) => f.map(csvCelda).join(";"))];
     fs.writeFileSync(CSV, "\uFEFF" + lineas.join("\r\n") + "\r\n", "utf8");
     console.log(`✔ catalogo.csv actualizado: ${n} imágenes aplicadas`);
+    return;
+  }
+
+  /* ---- Fase ronda2: carrusel — productos sin foto o con una sola ---- */
+  if (ronda2) {
+    fs.mkdirSync(DIR_WEB3, { recursive: true });
+    const cache2 = {};
+    try { Object.assign(cache2, JSON.parse(fs.readFileSync(path.join(__dirname, "cache_web3.json"), "utf8"))); } catch {}
+
+    // pendientes: sin ninguna foto, o con solo una (para el carrusel)
+    const pendientes = filas.filter((f) => {
+      const c = cache2[f[idx.nombre]];
+      if (c) return false; // ya intentado en esta ronda
+      const img = String(f[idx.imagen] || "").trim();
+      const img2 = String(f[idx.imagen2] || "").trim();
+      return !img2; // sin imagen2 → sin foto o con una
+    });
+
+    const total = pendientes.length;
+    console.log(`Ronda 2 (carrusel): ${total} productos a buscar`);
+    let i = 0, ok = 0;
+    const t0 = Date.now();
+
+    function escribirProgreso() {
+      const mins = ((Date.now() - t0) / 60000).toFixed(1);
+      fs.writeFileSync(PROGRESO, JSON.stringify({
+        total, procesados: i, conFoto: ok,
+        pct: total ? +(100 * i / total).toFixed(1) : 100,
+        minutos: +mins, actualizado: new Date().toISOString(),
+      }, null, 2));
+    }
+    escribirProgreso();
+
+    async function worker() {
+      while (true) {
+        const k = i++;
+        if (k >= total) return;
+        const f = pendientes[k];
+        const nombre = f[idx.nombre];
+        let r = { url: null, score: 0 };
+        try { r = (await mejorImagen(nombre)) || { url: null, score: 0 }; }
+        catch (e) { r = { url: null, score: 0, error: String(e.message || e) }; }
+
+        if (r.url) {
+          const d = await descargarImagen(r.url);
+          if (d) {
+            const base = slugArchivo(nombre);
+            const archivo = `${base}.${d.tipo}`;
+            fs.writeFileSync(path.join(DIR_WEB3, archivo), d.buf);
+            r.local = `imagenes/web3/${archivo}`;
+            ok++;
+            console.log(`[${ok}/${k + 1}/${total}] ${(r.score * 100).toFixed(0)}% ${nombre}`);
+          }
+        }
+        cache2[nombre] = r;
+        if ((k + 1) % 10 === 0) {
+          fs.writeFileSync(path.join(__dirname, "cache_web3.json"), JSON.stringify(cache2));
+          escribirProgreso();
+        }
+        await dormir(DELAY + Math.random() * 150);
+      }
+    }
+
+    await Promise.all(Array.from({ length: Math.min(WORKERS, Math.max(1, total)) }, () => worker()));
+    fs.writeFileSync(path.join(__dirname, "cache_web3.json"), JSON.stringify(cache2));
+    escribirProgreso();
+
+    const mins = ((Date.now() - t0) / 60000).toFixed(1);
+    console.log(`\n✔ Ronda 2 lista en ${mins} min: ${ok}/${total} con imagen (${((ok / total) * 100).toFixed(1)}%)`);
+
+    // aplicar al CSV: nueva en `imagen` (se ve primera, carrusel invertido),
+    // la existente (si había) pasa a `imagen2`.
+    let nuevas = 0, carruseles = 0;
+    const out = filas.map((f) => {
+      const c = cache2[f[idx.nombre]];
+      if (c && c.local) {
+        const img = String(f[idx.imagen] || "").trim();
+        if (!img) { f[idx.imagen] = c.local; nuevas++; }
+        else if (String(f[idx.imagen2] || "").trim() !== c.local) {
+          f[idx.imagen2] = img;
+          f[idx.imagen] = c.local;
+          carruseles++;
+        }
+      }
+      return f;
+    });
+    const lineas = [head.join(";"), ...out.map((f) => f.map(csvCelda).join(";"))];
+    fs.writeFileSync(CSV, "\uFEFF" + lineas.join("\r\n") + "\r\n", "utf8");
+    console.log(`✔ CSV: ${nuevas} productos con primera foto, ${carruseles} con carrusel (nueva primera)`);
     return;
   }
 
