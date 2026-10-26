@@ -21,7 +21,7 @@
     { id: "camila", nombre: "Camila (314 276 8503)", num: WHATSAPP_CAMILA },
     { id: "pruebas", nombre: "Yo · pruebas (312 388 7226)", num: WHATSAPP_PRUEBAS },
   ];
-  const AUDIO_COTIZACION_URL = "https://mini.clmbilliards.online/cotizacion_audio";
+  const WA_COTIZACION_URL = "https://mini.clmbilliards.online/cotizacion_whatsapp";
 
   /** @type {Producto[]} */
   let productos = [];
@@ -1122,30 +1122,35 @@
   async function enviarCotizacion() {
     if (!carrito.length) return toast("Tu carrito está vacío.", true);
     const texto = textoCotizacion();
-    // 1) WhatsApp con el detalle (siempre): abre la app con el mensaje listo
-    const url = `https://wa.me/${destinoActivo().num}?text=${encodeURIComponent(texto)}`;
-    const vent = window.open(url, "_blank");
+    const destino = destinoActivo();
 
-    // 2) Audio con el resumen (voz de Jeisson, sintetizado en la Mac):
-    // se descarga para adjuntarlo al mismo chat de WhatsApp.
+    // 1) Nota de voz AUTOMÁTICA: la Mac la sintetiza con la voz personal de
+    // Jeisson y el daemon WhatsApp la envía al número elegido (sin adjuntar
+    // nada a mano). El texto de detalle llega como mensaje al mismo chat.
+    let enviada = false;
     try {
-      const r = await fetch(AUDIO_COTIZACION_URL, {
+      const r = await fetch(WA_COTIZACION_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texto }),
+        body: JSON.stringify({ texto, destino: destino.id }),
       });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const blob = await r.blob();
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `cotizacion-${new Date().toISOString().slice(0, 10)}.m4a`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      toast("Audio de la cotización descargado: adjúntalo en el chat de WhatsApp.");
-    } catch {
-      toast(vent ? "WhatsApp abierto. El audio no se pudo generar (Mac desconectada)." : "WhatsApp abierto.", !vent);
+      const j = await r.json().catch(() => ({}));
+      enviada = r.ok && j.ok;
+    } catch { /* Mac o daemon caídos → fallback abajo */ }
+
+    // 2) Fallback / respaldo: abrir WhatsApp con el detalle en texto.
+    const url = `https://wa.me/${destino.num}?text=${encodeURIComponent(texto)}`;
+    if (!enviada) {
+      const vent = window.open(url, "_blank");
+      toast(vent
+        ? `No pude enviar la nota de voz automáticamente; abre el chat y envía el texto.`
+        : "No pude enviar la nota de voz automáticamente.", !vent);
+      return;
     }
+    toast(`¡Cotización enviada a ${destino.nombre} como nota de voz! 🎤`);
+    // El texto del detalle lo manda el server junto al audio; abrir el chat
+    // para que la vea (sin rellenar texto duplicado).
+    window.open(`https://wa.me/${destino.num}`, "_blank");
   }
 
   /* ---------------- Inicialización ---------------- */
