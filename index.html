@@ -89,6 +89,16 @@
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Vaciar catálogo
       </button>
+
+      <p class="drawer-section-title">Modos admin</p>
+      <button class="drawer-item" id="btnModoSeleccion" data-solo-admin aria-pressed="false" hidden>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Modo selección (ocultar en lote)
+      </button>
+      <button class="drawer-item" id="btnModoEditar" data-solo-admin aria-pressed="false" hidden>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Modo edición rápida
+      </button>
       <button class="drawer-item" id="btnSalirAdmin" hidden>
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Salir de admin
@@ -280,6 +290,15 @@
 
   <!-- Toast -->
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- Barra flotante del modo selección -->
+  <div class="barra-seleccion" id="barraSeleccion" hidden>
+    <span class="sel-contador"><strong id="selContador">0</strong> seleccionado(s)</span>
+    <button class="btn btn-primary" id="btnSelOcultar">Ocultar</button>
+    <button class="btn" id="btnSelMostrar">Mostrar</button>
+    <button class="btn" id="btnSelLimpiar">Limpiar</button>
+    <button class="btn btn-ghost" id="btnSelSalir">Salir</button>
+  </div>
 
   <!-- SheetJS para leer Excel (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin="anonymous"></script>

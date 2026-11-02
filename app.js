@@ -29,6 +29,8 @@
   let prefs = { moneda: "$ USD", mostrarPrecios: false };
   let destinoCotizacion = "camila";
   let rol = "invitado"; // "invitado" | "admin"
+  let modoEdicionRapida = false; // admin: clic en tarjeta abre el editor directo
+  const seleccionOcultar = new Set(); // claves marcadas en modo selección (ocultar en lote)
   /** @type {{codigo: string, nombre: string, precio: number, cant: number}[]} */
   let carrito = [];
 
@@ -111,6 +113,14 @@
     loginError: $("loginError"),
     btnSalirAdmin: $("btnSalirAdmin"),
     notaRol: $("notaRol"),
+    btnModoSeleccion: $("btnModoSeleccion"),
+    btnModoEditar: $("btnModoEditar"),
+    barraSeleccion: $("barraSeleccion"),
+    btnSelOcultar: $("btnSelOcultar"),
+    btnSelMostrar: $("btnSelMostrar"),
+    btnSelLimpiar: $("btnSelLimpiar"),
+    btnSelSalir: $("btnSelSalir"),
+    selContador: $("selContador"),
   };
 
   let temporizadorToast = null;
@@ -621,6 +631,7 @@
     art.style.animationDelay = `${Math.min(i, 12) * 30}ms`;
     art.tabIndex = 0;
     art.setAttribute("aria-label", p.nombre);
+    art.dataset.clave = claveProducto(p);
 
     const fotos = fotosProducto(p);
     const agotado = /^(no|0|sin|false|agotado)/i.test(p.stock.trim());
@@ -681,9 +692,9 @@
       btnAgregar.textContent = "En la cotización ✓";
     });
 
-    art.addEventListener("click", () => abrirModal(p));
+    art.addEventListener("click", () => abrirTarjeta(p));
     art.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrirModal(p); }
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrirTarjeta(p); }
     });
     return art;
   }
@@ -951,10 +962,84 @@
 
   const abierto = () => elementos.drawer.classList.contains("abierto");
 
+  /* ---------------- Modos admin: selección en lote y edición rápida ---------------- */
+
+  function modoSeleccionActivo() {
+    return rol === "admin" && document.body.classList.contains("modo-seleccion");
+  }
+
+  function actualizarBarraSeleccion() {
+    const activo = document.body.classList.contains("modo-seleccion");
+    elementos.barraSeleccion.hidden = !activo;
+    elementos.selContador.textContent = seleccionOcultar.size;
+    elementos.btnSelOcultar.hidden = seleccionOcultar.size === 0;
+    elementos.btnSelMostrar.hidden = seleccionOcultar.size === 0;
+    // Reflejar marca en las tarjetas visibles
+    document.querySelectorAll(".tarjeta").forEach((t) => {
+      const clave = t.dataset.clave || "";
+      t.classList.toggle("seleccionada", activo && seleccionOcultar.has(clave));
+    });
+  }
+
+  function activarModoSeleccion() {
+    document.body.classList.add("modo-seleccion");
+    elementos.btnModoSeleccion.setAttribute("aria-pressed", "true");
+    cerrarDrawer();
+    actualizarBarraSeleccion();
+    toast("Modo selección: tocá los productos a ocultar y confirmá abajo.");
+  }
+
+  function desactivarModoSeleccion() {
+    document.body.classList.remove("modo-seleccion");
+    elementos.btnModoSeleccion.setAttribute("aria-pressed", "false");
+    seleccionOcultar.clear();
+    actualizarBarraSeleccion();
+  }
+
+  function aplicarOcultadoLote(ocultar) {
+    if (!seleccionOcultar.size) return;
+    const n = seleccionOcultar.size;
+    let tocados = 0;
+    productos.forEach((p) => {
+      if (seleccionOcultar.has(claveProducto(p))) {
+        p.oculto = ocultar;
+        tocados++;
+      }
+    });
+    guardarDatos();
+    renderizarTodo();
+    seleccionOcultar.clear();
+    actualizarBarraSeleccion();
+    toast(`${tocados} producto${tocados === 1 ? "" : "s"} ${ocultar ? "oculto" : "visible"}${tocados === 1 ? "" : "s"} para clientes.`);
+    return n;
+  }
+
+  function abrirTarjeta(p) {
+    if (modoSeleccionActivo()) {
+      const clave = claveProducto(p);
+      if (seleccionOcultar.has(clave)) seleccionOcultar.delete(clave);
+      else seleccionOcultar.add(clave);
+      actualizarBarraSeleccion();
+      return;
+    }
+    if (modoEdicionRapida && rol === "admin") {
+      abrirEditorProducto(p);
+      return;
+    }
+    abrirModal(p);
+  }
+
   /* ---------------- Roles: invitado / admin ---------------- */
 
   function aplicarRol() {
     const esAdmin = rol === "admin";
+    if (!esAdmin) {
+      // Al dejar de ser admin, cortar los modos activos
+      if (document.body.classList.contains("modo-seleccion")) desactivarModoSeleccion();
+      modoEdicionRapida = false;
+      document.body.classList.remove("modo-edito-rapida");
+      elementos.btnModoEditar?.setAttribute("aria-pressed", "false");
+    }
     document.querySelectorAll("[data-solo-admin]").forEach((el) => (el.hidden = !esAdmin));
     elementos.btnSalirAdmin.hidden = !esAdmin;
     elementos.notaRol.hidden = esAdmin;
@@ -1274,6 +1359,28 @@
       intentarLogin(elementos.inputClave.value);
     });
     elementos.btnSalirAdmin.addEventListener("click", salirAdmin);
+
+    // Modos admin: selección en lote y edición rápida
+    elementos.btnModoSeleccion.addEventListener("click", () => {
+      if (document.body.classList.contains("modo-seleccion")) desactivarModoSeleccion();
+      else activarModoSeleccion();
+    });
+    elementos.btnModoEditar.addEventListener("click", () => {
+      modoEdicionRapida = !modoEdicionRapida;
+      document.body.classList.toggle("modo-edito-rapida", modoEdicionRapida);
+      elementos.btnModoEditar.setAttribute("aria-pressed", String(modoEdicionRapida));
+      cerrarDrawer();
+      toast(modoEdicionRapida
+        ? "Modo edición rápida: tocá un producto para abrir su editor."
+        : "Modo edición rápida desactivado.");
+    });
+    elementos.btnSelOcultar.addEventListener("click", () => aplicarOcultadoLote(true));
+    elementos.btnSelMostrar.addEventListener("click", () => aplicarOcultadoLote(false));
+    elementos.btnSelLimpiar.addEventListener("click", () => {
+      seleccionOcultar.clear();
+      actualizarBarraSeleccion();
+    });
+    elementos.btnSelSalir.addEventListener("click", desactivarModoSeleccion);
 
     // Cerrar el menú al navegar con hashes internos si hiciera falta
     window.addEventListener("hashchange", cerrarDrawer);
