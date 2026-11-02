@@ -27,6 +27,8 @@ const DIR_WEB = path.join(__dirname, "..", "imagenes", "web");
 // Ronda 2 (2026-10-25): fotos para carrusel — nuevos y los que ya tenían una
 const DIR_WEB3 = path.join(__dirname, "..", "imagenes", "web3");
 const PROGRESO = path.join(__dirname, "progreso_web3.json");
+// Ronda 3 (2026-11-01): productos que siguen sin ninguna foto
+const DIR_WEB4 = path.join(__dirname, "..", "imagenes", "web4");
 
 const UMBRAL = 0.4;      // score mínimo para aceptar la imagen
 const DELAY = 400;       // ms entre queries por worker
@@ -120,13 +122,14 @@ function scoreCandidato(objTokens, c, nombreProducto) {
   return Math.max(jaccard(objTokens, tokens(c.titulo)), jaccard(objTokens, tokens(slug)));
 }
 
-function queryPara(nombre) {
+function queryPara(nombre, marca) {
   let n = String(nombre)
     .replace(/\s*[-–]\s*\d+\s*(ml|gr)\b.*$/i, "")
     .replace(/\s*[-–]\s*(hombres?|mujer(es)?|unisex|niñ[oa]s?|caballero|dama)\b.*$/i, "")
     .replace(/\b\d+\s*(ml|onz)\b/gi, "")
     .replace(/\s+/g, " ")
     .trim();
+  if (marca) n = `${marca} ${n}`;
   if (n.length > 80) n = n.slice(0, 80);
   // "perfume" primero: mejores coincidencias en DDG/Bing
   return `perfume ${n} bottle`;
@@ -276,11 +279,46 @@ function slugArchivo(nombre) {
   return `${s}-${h}`;
 }
 
+/* ---------- Ronda 3 (2026-11-01): productos aún sin foto ---------- */
+
+// Descripciones "Marca X": extraer la marca para la query.
+function marcaDe(desc) {
+  const m = String(desc || "").match(/^\s*Marca\s+(.+?)\s*$/i);
+  if (!m) return "";
+  let marca = m[1].trim();
+  // Typos/alias conocidos del catálogo → nombre real buscable
+  const FIX = {
+    "plo": "Ralph Lauren",
+    "van cleef & arples": "Van Cleef & Arpels",
+    "bond": "Bond No. 9",
+  };
+  return FIX[marca.toLowerCase()] || marca;
+}
+
+// Typos de producto conocidos → corrección para query y scoring
+function corregirNombre(nombre) {
+  const FIX = [
+    [/\bWhit Love\b/i, "With Love"],
+    [/\bPor Lui\b/i, "Pour Lui"],
+    [/\bFlowebomb\b/i, "Flowerbomb"],
+    [/\bMavie\b/i, "Ma Vie"],
+    [/\bMillesimme\b/i, "Millesime"],
+    [/\bTurbereuse\b/i, "Tubereuse"],
+    [/\bIcy Miyoky\b/i, "Icy Miyake"],
+    [/\bFussion\b/i, "Fusion"],
+    [/\bEau Sauvage\b/i, "Eau Sauvage"],
+  ];
+  let n = String(nombre);
+  for (const [re, rep] of FIX) n = n.replace(re, rep);
+  return n;
+}
+
 /* ---------- Buscar la mejor imagen de un producto ---------- */
 
-async function mejorImagen(nombre) {
-  const q = queryPara(nombre);
-  const obj = tokens(nombre);
+async function mejorImagen(nombre, marca) {
+  const nombreCorr = corregirNombre(nombre);
+  const q = queryPara(nombreCorr, marca);
+  const obj = tokens(marca ? `${marca} ${nombreCorr}` : nombreCorr);
   if (!obj.length) return null;
 
   let candidatos = await ddgImagenes(q);
@@ -326,6 +364,8 @@ async function main() {
   const descargar = args.includes("--descargar");
   const prueba = args.includes("--prueba");
   const ronda2 = args.includes("--ronda2");
+  const ronda3 = args.includes("--ronda3");
+  const ronda4 = args.includes("--ronda4");
 
   const { head, filas, idx } = leerCatalogo();
   cargarCache();
@@ -459,6 +499,158 @@ async function main() {
     const lineas = [head.join(";"), ...out.map((f) => f.map(csvCelda).join(";"))];
     fs.writeFileSync(CSV, "\uFEFF" + lineas.join("\r\n") + "\r\n", "utf8");
     console.log(`✔ CSV: ${nuevas} productos con primera foto, ${carruseles} con carrusel (nueva primera)`);
+    return;
+  }
+
+  /* ---- Fase ronda3: los que siguen sin NINGUNA foto, usando la marca ---- */
+  if (ronda3) {
+    fs.mkdirSync(DIR_WEB4, { recursive: true });
+    const cache3 = {};
+    try { Object.assign(cache3, JSON.parse(fs.readFileSync(path.join(__dirname, "cache_web4.json"), "utf8"))); } catch {}
+
+    const pendientes = filas.filter((f) => {
+      if (cache3[f[idx.nombre]]) return false;
+      const img = String(f[idx.imagen] || "").trim();
+      const img2 = String(f[idx.imagen2] || "").trim();
+      return !img && !img2;
+    });
+
+    const total = pendientes.length;
+    console.log(`Ronda 3 (sin foto): ${total} productos a buscar`);
+    let i = 0, ok = 0;
+    const t0 = Date.now();
+
+    async function worker() {
+      while (true) {
+        const k = i++;
+        if (k >= total) return;
+        const f = pendientes[k];
+        const nombre = f[idx.nombre];
+        const marca = marcaDe(f[idx.descripcion]);
+        let r = { url: null, score: 0 };
+        try { r = (await mejorImagen(nombre, marca)) || { url: null, score: 0 }; }
+        catch (e) { r = { url: null, score: 0, error: String(e.message || e) }; }
+
+        if (r.url) {
+          const d = await descargarImagen(r.url);
+          if (d) {
+            const base = slugArchivo(nombre);
+            const archivo = `${base}.${d.tipo}`;
+            fs.writeFileSync(path.join(DIR_WEB4, archivo), d.buf);
+            r.local = `imagenes/web4/${archivo}`;
+            ok++;
+            console.log(`[${ok}/${k + 1}/${total}] ${(r.score * 100).toFixed(0)}% ${marca ? marca + " · " : ""}${nombre}`);
+          }
+        }
+        cache3[nombre] = r;
+        if ((k + 1) % 5 === 0)
+          fs.writeFileSync(path.join(__dirname, "cache_web4.json"), JSON.stringify(cache3));
+        await dormir(DELAY + Math.random() * 150);
+      }
+    }
+
+    await Promise.all(Array.from({ length: Math.min(WORKERS, Math.max(1, total)) }, () => worker()));
+    fs.writeFileSync(path.join(__dirname, "cache_web4.json"), JSON.stringify(cache3));
+
+    const mins = ((Date.now() - t0) / 60000).toFixed(1);
+    console.log(`\n✔ Ronda 3 lista en ${mins} min: ${ok}/${total} con imagen (${((ok / total) * 100).toFixed(1)}%)`);
+
+    let aplicadas = 0;
+    const out = filas.map((f) => {
+      const c = cache3[f[idx.nombre]];
+      if (c && c.local && !String(f[idx.imagen] || "").trim()) {
+        f[idx.imagen] = c.local;
+        aplicadas++;
+      }
+      return f;
+    });
+    const lineas = [head.join(";"), ...out.map((f) => f.map(csvCelda).join(";"))];
+    fs.writeFileSync(CSV, "\uFEFF" + lineas.join("\r\n") + "\r\n", "utf8");
+    console.log(`✔ CSV: ${aplicadas} primeras fotos aplicadas`);
+    return;
+  }
+
+  /* ---- Fase ronda4 (2026-11-01): lista del usuario — REEMPLAZAR foto por una nueva ---- */
+  if (ronda4) {
+    fs.mkdirSync(DIR_WEB4, { recursive: true });
+    const cache4 = {};
+    try { Object.assign(cache4, JSON.parse(fs.readFileSync(path.join(__dirname, "cache_web4.json"), "utf8"))); } catch {}
+    const nombres4 = JSON.parse(fs.readFileSync(path.join(__dirname, "ronda4_nombres.json"), "utf8"));
+    const setNombres = new Set(nombres4);
+
+    // URL ya usada por este producto (rondas previas) para forzar foto DISTINTA
+    const urlUsada = {};
+    for (const f of filas) {
+      const n = f[idx.nombre];
+      if (!setNombres.has(n)) continue;
+      for (const cachePrevio of [cache, cache4]) {
+        const u = cachePrevio[n]?.url;
+        if (u) urlUsada[n] = u;
+      }
+    }
+
+    const pendientes = filas.filter((f) => setNombres.has(f[idx.nombre]) && !cache4[`r4:${f[idx.nombre]}`]);
+    const total = pendientes.length;
+    console.log(`Ronda 4 (reemplazo): ${total} productos`);
+    let i = 0, ok = 0;
+    const t0 = Date.now();
+
+    async function worker() {
+      while (true) {
+        const k = i++;
+        if (k >= total) return;
+        const f = pendientes[k];
+        const nombre = f[idx.nombre];
+        const marca = marcaDe(f[idx.descripcion]);
+        let r = { url: null, score: 0 };
+        try { r = (await mejorImagen(nombre, marca)) || { url: null, score: 0 }; }
+        catch (e) { r = { url: null, score: 0, error: String(e.message || e) }; }
+
+        if (r.url === urlUsada[nombre]) r.url = null; // misma imagen: no es "nueva"
+        if (r.url) {
+          const d = await descargarImagen(r.url);
+          if (d) {
+            const base = slugArchivo(nombre);
+            const archivo = `${base}-r4.${d.tipo}`;
+            fs.writeFileSync(path.join(DIR_WEB4, archivo), d.buf);
+            r.local = `imagenes/web4/${archivo}`;
+            ok++;
+            console.log(`[${ok}/${k + 1}/${total}] ${(r.score * 100).toFixed(0)}% ${marca ? marca + " · " : ""}${nombre}`);
+          }
+        }
+        cache4[`r4:${nombre}`] = r;
+        if ((k + 1) % 5 === 0)
+          fs.writeFileSync(path.join(__dirname, "cache_web4.json"), JSON.stringify(cache4));
+        await dormir(DELAY + Math.random() * 150);
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(WORKERS, Math.max(1, total)) }, () => worker()));
+    fs.writeFileSync(path.join(__dirname, "cache_web4.json"), JSON.stringify(cache4));
+    const mins = ((Date.now() - t0) / 60000).toFixed(1);
+    console.log(`\n✔ Ronda 4 lista en ${mins} min: ${ok}/${total} (${((ok / total) * 100).toFixed(1)}%)`);
+
+    // Aplicar: la nueva va PRIMERA (imagen), la anterior pasa a imagen2 (carrusel).
+    let aplicadas = 0, conservadas = 0;
+    const out = filas.map((f) => {
+      const c = cache4[`r4:${f[idx.nombre]}`];
+      if (c && c.local) {
+        const img = String(f[idx.imagen] || "").trim();
+        const img2 = String(f[idx.imagen2] || "").trim();
+        if (img && img !== c.local) {
+          // carrusel: nueva primera, vieja primera→imagen2, vieja imagen2 se descarta
+          f[idx.imagen2] = img;
+          f[idx.imagen] = c.local;
+          conservadas++;
+        } else if (!img) {
+          f[idx.imagen] = c.local;
+          aplicadas++;
+        }
+      }
+      return f;
+    });
+    const lineas = [head.join(";"), ...out.map((f) => f.map(csvCelda).join(";"))];
+    fs.writeFileSync(CSV, "\uFEFF" + lineas.join("\r\n") + "\r\n", "utf8");
+    console.log(`✔ CSV: ${aplicadas} nuevas + ${conservadas} reemplazos (vieja pasa a imagen2)`);
     return;
   }
 
