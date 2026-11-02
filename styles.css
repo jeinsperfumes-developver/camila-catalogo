@@ -620,6 +620,28 @@ button { font-family: inherit; cursor: pointer; }
   cursor: pointer;
 }
 
+/* Atajo visible: llevar al cliente al final de la página para descargar el PDF */
+.pdf-atajo-wrap { margin-left: auto; }
+
+.btn-pdf-atajo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: 1px solid var(--acento, #b07d2b);
+  background: var(--acento-suave, #fdf3e3);
+  color: var(--tinta);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.btn-pdf-atajo:hover { transform: translateY(-1px); background: #f7e8cd; }
+.btn-pdf-atajo .icon { width: 20px; height: 20px; }
+
 .rango-wrap {
   flex: 1;
   min-width: 220px;

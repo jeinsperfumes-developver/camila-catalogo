@@ -139,6 +139,7 @@
     btnCopiarResultado: $("btnCopiarResultado"),
     btnEnviarResultadoWhats: $("btnEnviarResultadoWhats"),
     btnAbrirPdfCliente: $("btnAbrirPdfCliente"),
+    btnIrPdfCliente: $("btnIrPdfCliente"),
     pdfClienteBackdrop: $("pdfClienteBackdrop"),
     btnCerrarPdfCliente: $("btnCerrarPdfCliente"),
     formPdfCliente: $("formPdfCliente"),
@@ -1626,6 +1627,11 @@
       if (sol) enviarCodigoWhats(sol);
     });
     elementos.btnAbrirPdfCliente.addEventListener("click", abrirPdfCliente);
+    elementos.btnIrPdfCliente.addEventListener("click", () => {
+      // Bajar hasta el pie (donde vive el botón del código) y abrir el modal
+      document.querySelector(".pie").scrollIntoView({ behavior: "smooth" });
+      abrirPdfCliente();
+    });
     elementos.btnCerrarPdfCliente.addEventListener("click", cerrarPdfCliente);
     elementos.pdfClienteBackdrop.addEventListener("click", (e) => {
       if (e.target === elementos.pdfClienteBackdrop) cerrarPdfCliente();
