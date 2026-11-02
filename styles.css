@@ -1383,6 +1383,24 @@ button { font-family: inherit; cursor: pointer; }
 .pdf-estado.aprobada { background: #eef7f1; color: #3d8b5f; }
 .pdf-estado.pendiente { background: #fdf3e3; color: #b07d2b; }
 
+/* Fila aprobada: resaltada para que el código no pase desapercibido */
+.pdf-solicitudes li.aprobada {
+  background: #eef7f1;
+  border-color: #9ecdb2;
+}
+
+.btn-copiar-codigo {
+  border: 1px solid #3d8b5f;
+  background: #3d8b5f;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-copiar-codigo:hover { background: #33754f; }
+
 .pdf-aprobacion-manual { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
 .pdf-aprobacion-manual label { font-size: 0.8rem; color: var(--tinta-suave); }
 .fila-aprobacion { display: flex; gap: 8px; }

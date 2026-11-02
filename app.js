@@ -1345,7 +1345,8 @@
       const detalle = `${sol.fecha} · ${sol.productos} productos${Number.isFinite(sol.total) ? ` · ${formatearPrecio(sol.total)}` : ""}`;
       const acciones = sol.estado === "pendiente"
         ? `<button class="btn btn-primary" data-aprobar="${escapar(sol.id)}">Aprobar</button>`
-        : `<span class="pdf-estado aprobada">Aprobada</span> <span class="pdf-codigo">${escapar(sol.codigo || "")}</span>`;
+        : `<span class="pdf-estado aprobada">Aprobada</span> <span class="pdf-codigo">${escapar(sol.codigo || "")}</span> <button class="btn-copiar-codigo" data-copiar="${escapar(sol.codigo || "")}" title="Copiar código">Copiar</button>`;
+      if (sol.estado === "aprobada") li.classList.add("aprobada");
       li.innerHTML = `
         <span class="pdf-sol-info">
           <span class="pdf-sol-id">${escapar(sol.id)}</span>
@@ -1354,6 +1355,8 @@
         <span class="pdf-sol-acciones">${acciones}</span>`;
       const btn = li.querySelector("[data-aprobar]");
       if (btn) btn.addEventListener("click", () => aprobarSolicitud(sol.id));
+      const btnCopiar = li.querySelector("[data-copiar]");
+      if (btnCopiar) btnCopiar.addEventListener("click", () => copiarCodigoPdf(sol.codigo));
       cont.appendChild(li);
     }
   }
@@ -1367,6 +1370,13 @@
     guardarSolicitudesPdf();
     renderizarSolicitudesPdf();
     toast(`Solicitud ${sol.id} aprobada. Código: ${sol.codigo} — envíalo al cliente.`);
+  }
+
+  function copiarCodigoPdf(codigo) {
+    navigator.clipboard.writeText(codigo).then(
+      () => toast(`Código ${codigo} copiado al portapapeles.`),
+      () => toast(`Código: ${codigo}`, false)
+    );
   }
 
   async function abrirPdfCliente() {
