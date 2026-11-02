@@ -1641,6 +1641,18 @@
       }
     } catch { /* ignorar */ }
 
+    // Migración: las Esencias Industriales ya no van en el catálogo público.
+    // Se quitan de la copia local en caché para que desaparezcan también en
+    // navegadores que cargaron el catálogo antiguo (el localStorage tiene
+    // prioridad sobre catalogo.csv).
+    const sinEsencias = productos.filter(
+      (p) => normalizarTexto(p.categoria) !== "esencias industriales"
+    );
+    if (sinEsencias.length !== productos.length) {
+      productos = sinEsencias;
+      guardarDatos();
+    }
+
     // 2) Si no hay nada local, intentar catalogo.csv del repo (GitHub Pages)
     if (!productos.length) {
       fetch(CSV_REPO, { headers: { Accept: "text/csv" } })
