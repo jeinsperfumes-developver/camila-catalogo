@@ -620,27 +620,61 @@ button { font-family: inherit; cursor: pointer; }
   cursor: pointer;
 }
 
-/* Atajo visible: llevar al cliente al final de la página para descargar el PDF */
-.pdf-atajo-wrap { margin-left: auto; }
-
-.btn-pdf-atajo {
-  display: inline-flex;
-  align-items: center;
+/* Atajo visible: cajón tipo cupón para pedir el código de desbloqueo del PDF */
+.pdf-atajo-wrap {
+  margin-left: auto;
+  display: flex;
   gap: 8px;
-  padding: 9px 16px;
-  border: 1px solid var(--acento, #b07d2b);
-  background: var(--acento-suave, #fdf3e3);
-  color: var(--tinta);
-  border-radius: 10px;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease;
+  align-items: flex-start;
 }
 
-.btn-pdf-atajo:hover { transform: translateY(-1px); background: #f7e8cd; }
-.btn-pdf-atajo .icon { width: 20px; height: 20px; }
+.pdf-atajo-cupon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1.5px dashed var(--acento, #b07d2b);
+  background: var(--acento-suave, #fdf3e3);
+  border-radius: 10px;
+}
+
+.pdf-atajo-cupon .icon { width: 20px; height: 20px; flex: none; color: var(--acento, #b07d2b); }
+
+.pdf-atajo-cupon input {
+  width: 190px;
+  padding: 7px 10px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 8px;
+  background: var(--bg);
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--tinta);
+}
+
+.pdf-atajo-cupon button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--acento, #b07d2b);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pdf-atajo-cupon button:hover { filter: brightness(1.08); }
+
+.pdf-atajo-cupon .login-error { flex-basis: 100%; }
+
+/* Botón "Cargar más" bajo el grid (paginación por lotes) */
+.btn-cargar-mas {
+  display: block;
+  margin: 18px auto 6px;
+  min-width: 240px;
+}
 
 .rango-wrap {
   flex: 1;
@@ -1199,6 +1233,8 @@ button { font-family: inherit; cursor: pointer; }
   }
 
   .filtro-fila { flex-direction: column; align-items: stretch; }
+  .pdf-atajo-wrap { margin-left: 0; width: 100%; }
+  .pdf-atajo-cupon input { flex: 1; width: auto; min-width: 0; }
 
   .rango-wrap output { text-align: left; }
 

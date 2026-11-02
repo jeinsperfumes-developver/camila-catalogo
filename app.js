@@ -140,6 +140,9 @@
     btnEnviarResultadoWhats: $("btnEnviarResultadoWhats"),
     btnAbrirPdfCliente: $("btnAbrirPdfCliente"),
     btnIrPdfCliente: $("btnIrPdfCliente"),
+    formPdfAtajo: $("formPdfAtajo"),
+    inputPdfAtajo: $("inputPdfAtajo"),
+    pdfAtajoError: $("pdfAtajoError"),
     pdfClienteBackdrop: $("pdfClienteBackdrop"),
     btnCerrarPdfCliente: $("btnCerrarPdfCliente"),
     formPdfCliente: $("formPdfCliente"),
@@ -734,23 +737,61 @@
     if (!hayPrecios && elementos.selOrden.value.startsWith("precio-")) elementos.selOrden.value = "relevante";
   }
 
+  // Paginación: en móvil 1881 tarjetas de golpe saturan el DOM y el scroll.
+  // Se renderiza por lotes y se añaden más al pulsar "Cargar más".
+  const TAMANO_PAGINA = 24;
+  let paginasMostradas = 1;
+
   function renderizarGrid() {
     const lista = productosFiltrados();
+    paginasMostradas = 1;
     elementos.grid.replaceChildren();
-    lista.forEach((p, i) => elementos.grid.appendChild(tarjetaProducto(p, i)));
+    lista.slice(0, TAMANO_PAGINA).forEach((p, i) => elementos.grid.appendChild(tarjetaProducto(p, i)));
+    actualizarBotonCargarMas(lista);
 
     const hayDatos = productos.length > 0;
     elementos.estadoVacio.hidden = hayDatos;
     elementos.grid.hidden = !hayDatos;
     elementos.sinResultados.hidden = !(hayDatos && lista.length === 0);
     elementos.infoResultados.textContent = hayDatos
-      ? `Mostrando ${lista.length} de ${productos.length} productos`
+      ? `Mostrando ${Math.min(TAMANO_PAGINA * paginasMostradas, lista.length)} de ${productos.length} productos`
       : "";
 
     const conPrecio = productos.filter((p) => Number.isFinite(p.precio));
     const precioMax = conPrecio.length ? Math.max(...conPrecio.map((p) => p.precio)) : 0;
     elementos.inputPrecioMax.disabled = !conPrecio.length;
     actualizarEtiquetaPrecio(precioMax);
+  }
+
+  // Añade el siguiente lote de tarjetas al grid ("Cargar más").
+  function cargarMasProductos() {
+    const lista = productosFiltrados();
+    const desde = TAMANO_PAGINA * paginasMostradas;
+    paginasMostradas++;
+    const lote = lista.slice(desde, desde + TAMANO_PAGINA);
+    const frag = document.createDocumentFragment();
+    lote.forEach((p, j) => frag.appendChild(tarjetaProducto(p, j)));
+    elementos.grid.appendChild(frag);
+    actualizarBotonCargarMas(lista);
+    elementos.infoResultados.textContent =
+      `Mostrando ${Math.min(desde + lote.length, lista.length)} de ${productos.length} productos`;
+  }
+
+  function actualizarBotonCargarMas(lista) {
+    const restantes = lista.length - TAMANO_PAGINA * paginasMostradas;
+    if (restantes > 0) {
+      if (!elementos.btnCargarMas) {
+        elementos.btnCargarMas = document.createElement("button");
+        elementos.btnCargarMas.type = "button";
+        elementos.btnCargarMas.className = "btn btn-ghost btn-cargar-mas";
+        elementos.btnCargarMas.textContent = "Cargar más productos";
+        elementos.btnCargarMas.addEventListener("click", cargarMasProductos);
+      }
+      elementos.btnCargarMas.textContent = `Cargar más (${restantes} restantes)`;
+      elementos.grid.after(elementos.btnCargarMas);
+    } else if (elementos.btnCargarMas) {
+      elementos.btnCargarMas.remove();
+    }
   }
 
   function actualizarEtiquetaPrecio(precioMaxReal) {
@@ -1433,6 +1474,54 @@
     setTimeout(() => (elementos.pdfClienteBackdrop.hidden = true), 280);
   }
 
+  // Descarga desde el cajón cupón de la fila de filtros: solo el código,
+  // sin ID (el código es único y suficiente).
+  async function validarYDescargarPorCodigo(valor, errEl) {
+    const codigo = String(valor || "").trim().toUpperCase();
+    errEl.hidden = true;
+    if (!codigo) {
+      errEl.textContent = "Ingresa tu código de desbloqueo (ej. CO-9F3K).";
+      errEl.hidden = false;
+      return;
+    }
+    // 1) Aprobaciones locales (mismo navegador que pidió el PDF)
+    let sol = solicitudesPdf.find((s) => s.estado === "aprobada" && String(s.codigo).toUpperCase() === codigo);
+    // 2) Aprobaciones publicadas en el repo (cualquier navegador)
+    if (!sol) {
+      try {
+        const r = await fetch(PDF_APROBACIONES_URL, { cache: "no-store" });
+        if (r.ok) {
+          const publicadas = await r.json();
+          if (Array.isArray(publicadas)) {
+            const remota = publicadas.find((p) => String(p.codigo || "").toUpperCase() === codigo);
+            if (remota) {
+              sol = {
+                id: remota.id || codigo,
+                fecha: "",
+                productos: 0,
+                total: null,
+                estado: "aprobada",
+                codigo: remota.codigo,
+              };
+              solicitudesPdf.push(sol);
+              guardarSolicitudesPdf();
+            }
+          }
+        }
+      } catch { /* sin conexión */ }
+    }
+    if (!sol) {
+      errEl.textContent = "Ese código no está activo. Verifica con nosotras por WhatsApp.";
+      errEl.hidden = false;
+      return;
+    }
+    const ok = await descargarPdfCatalogo(errEl);
+    if (ok) {
+      elementos.inputPdfAtajo.value = "";
+      toast("¡Catálogo descargado! Que lo disfrutes.");
+    }
+  }
+
   async function validarYDescargarPdf(e) {
     e.preventDefault();
     const id = elementos.inputPdfId.value.trim().toUpperCase();
@@ -1473,7 +1562,12 @@
       err.hidden = false;
       return;
     }
-    // Descargar el PDF
+    const ok = await descargarPdfCatalogo(err);
+    if (ok) cerrarPdfCliente();
+  }
+
+  // Descarga el PDF de prueba y dispara el archivo. true si fue bien.
+  async function descargarPdfCatalogo(errEl) {
     try {
       const r = await fetch(PDF_PRUEBA_URL);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -1484,11 +1578,11 @@
       document.body.appendChild(a);
       a.click();
       a.remove();
-      cerrarPdfCliente();
-      toast("¡Catálogo descargado! Que lo disfrutes.");
+      return true;
     } catch {
-      err.textContent = "No pude descargar el PDF. Revisa tu conexión e inténtalo de nuevo.";
-      err.hidden = false;
+      errEl.textContent = "No pude descargar el PDF. Revisa tu conexión e inténtalo de nuevo.";
+      errEl.hidden = false;
+      return false;
     }
   }
 
@@ -1627,10 +1721,10 @@
       if (sol) enviarCodigoWhats(sol);
     });
     elementos.btnAbrirPdfCliente.addEventListener("click", abrirPdfCliente);
-    elementos.btnIrPdfCliente.addEventListener("click", () => {
-      // Bajar hasta el pie (donde vive el botón del código) y abrir el modal
-      document.querySelector(".pie").scrollIntoView({ behavior: "smooth" });
-      abrirPdfCliente();
+    // Cajón cupón de la fila de filtros: valida el código y descarga directo
+    elementos.formPdfAtajo.addEventListener("submit", (e) => {
+      e.preventDefault();
+      validarYDescargarPorCodigo(elementos.inputPdfAtajo.value, elementos.pdfAtajoError);
     });
     elementos.btnCerrarPdfCliente.addEventListener("click", cerrarPdfCliente);
     elementos.pdfClienteBackdrop.addEventListener("click", (e) => {
