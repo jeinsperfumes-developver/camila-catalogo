@@ -1402,6 +1402,51 @@ button { font-family: inherit; cursor: pointer; }
 .btn-copiar-codigo:hover { background: #33754f; }
 
 .pdf-aprobacion-manual { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+
+/* Panel grande con el código recién generado: imposible de pasar por alto */
+.pdf-resultado {
+  margin: 4px 0 14px;
+  padding: 16px 18px;
+  background: #eef7f1;
+  border: 2px solid #3d8b5f;
+  border-radius: 14px;
+  text-align: center;
+  animation: pdf-resultado-pop 0.35s ease;
+}
+
+.pdf-resultado-titulo {
+  color: #2d6b47;
+  font-weight: 800;
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+}
+
+.pdf-resultado-id {
+  color: var(--tinta-suave);
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+}
+
+.pdf-resultado-codigo {
+  font-family: var(--font-titulo, inherit);
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #245f42;
+  background: #fff;
+  border: 1px dashed #3d8b5f;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  user-select: all;
+}
+
+.pdf-resultado-acciones { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+@keyframes pdf-resultado-pop {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
 .pdf-aprobacion-manual label { font-size: 0.8rem; color: var(--tinta-suave); }
 .fila-aprobacion { display: flex; gap: 8px; }
 .fila-aprobacion input { flex: 1; }

@@ -133,6 +133,11 @@
     sinSolicitudesPdf: $("sinSolicitudesPdf"),
     formAprobarManual: $("formAprobarManual"),
     inputIdManual: $("inputIdManual"),
+    pdfResultado: $("pdfResultado"),
+    pdfResultadoId: $("pdfResultadoId"),
+    pdfResultadoCodigo: $("pdfResultadoCodigo"),
+    btnCopiarResultado: $("btnCopiarResultado"),
+    btnEnviarResultadoWhats: $("btnEnviarResultadoWhats"),
     btnAbrirPdfCliente: $("btnAbrirPdfCliente"),
     pdfClienteBackdrop: $("pdfClienteBackdrop"),
     btnCerrarPdfCliente: $("btnCerrarPdfCliente"),
@@ -1335,6 +1340,24 @@
     setTimeout(() => (elementos.pdfAdminBackdrop.hidden = true), 280);
   }
 
+  // Panel grande con el código recién generado: debe ser lo primero que se vea.
+  function mostrarResultadoPdf(sol) {
+    elementos.pdfResultadoId.textContent = sol.id;
+    elementos.pdfResultadoCodigo.textContent = sol.codigo;
+    elementos.pdfResultado.hidden = false;
+    elementos.pdfResultado.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  function enviarCodigoWhats(sol) {
+    const mensaje =
+      `¡Hola! Tu catálogo en PDF está listo. 🌸\n` +
+      `Descárgalo en ${location.origin + location.pathname} → menú → "Descargar catálogo en PDF" ` +
+      `e ingresa estos datos:\n\n` +
+      `• ID de solicitud: ${sol.id}\n` +
+      `• Código de desbloqueo: ${sol.codigo}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(mensaje)}`, "_blank");
+  }
+
   function renderizarSolicitudesPdf() {
     const cont = elementos.listaSolicitudesPdf;
     cont.replaceChildren();
@@ -1369,6 +1392,7 @@
     sol.codigo = nuevoCodigoDesbloqueo();
     guardarSolicitudesPdf();
     renderizarSolicitudesPdf();
+    mostrarResultadoPdf(sol);
     toast(`Solicitud ${sol.id} aprobada. Código: ${sol.codigo} — envíalo al cliente.`);
   }
 
@@ -1593,6 +1617,13 @@
       e.preventDefault();
       aprobarSolicitud(elementos.inputIdManual.value.trim().toUpperCase());
       elementos.inputIdManual.value = "";
+    });
+    elementos.btnCopiarResultado.addEventListener("click", () =>
+      copiarCodigoPdf(elementos.pdfResultadoCodigo.textContent)
+    );
+    elementos.btnEnviarResultadoWhats.addEventListener("click", () => {
+      const sol = solicitudesPdf.find((s) => s.id === elementos.pdfResultadoId.textContent);
+      if (sol) enviarCodigoWhats(sol);
     });
     elementos.btnAbrirPdfCliente.addEventListener("click", abrirPdfCliente);
     elementos.btnCerrarPdfCliente.addEventListener("click", cerrarPdfCliente);

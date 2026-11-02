@@ -318,6 +318,15 @@
       <div class="modal-contenido">
         <h2 id="pdfAdminTitulo">Solicitudes de PDF</h2>
         <p class="pdf-admin-sub">Aprueba una solicitud para generar su código de desbloqueo. El código se envía al cliente por WhatsApp o correo, junto con su ID de solicitud.</p>
+        <div class="pdf-resultado" id="pdfResultado" hidden>
+          <p class="pdf-resultado-titulo">✓ Solicitud aprobada — Código generado</p>
+          <p class="pdf-resultado-id">Solicitud <span id="pdfResultadoId"></span> · envía estos dos datos al cliente:</p>
+          <p class="pdf-resultado-codigo" id="pdfResultadoCodigo"></p>
+          <div class="pdf-resultado-acciones">
+            <button type="button" class="btn btn-primary" id="btnCopiarResultado">Copiar código</button>
+            <button type="button" class="btn" id="btnEnviarResultadoWhats">Enviar por WhatsApp</button>
+          </div>
+        </div>
         <ul class="pdf-solicitudes" id="listaSolicitudesPdf"></ul>
         <p class="pdf-sin-solicitudes" id="sinSolicitudesPdf" hidden>No hay solicitudes pendientes.</p>
         <form class="pdf-aprobacion-manual" id="formAprobarManual">
