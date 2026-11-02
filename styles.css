@@ -1339,6 +1339,69 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--tinta);
 }
 
+/* Checkbox "Solicitar PDF" en el carrito */
+.checkbox-pdf {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px dashed rgba(38, 32, 27, 0.25);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--tinta);
+}
+
+.checkbox-pdf input { width: 18px; height: 18px; accent-color: var(--acento); flex-shrink: 0; }
+.checkbox-pdf small { display: block; color: var(--tinta-suave); font-size: 0.75rem; }
+
+/* Botón del footer para descargar PDF */
+.btn-descargar-pdf { margin-top: 10px; }
+
+/* Modal admin solicitudes PDF */
+.pdf-admin-sub, .pdf-cliente-sub { color: var(--tinta-suave); font-size: 0.85rem; margin-bottom: 14px; }
+
+.pdf-solicitudes { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
+
+.pdf-solicitudes li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(38, 32, 27, 0.15);
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.pdf-sol-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pdf-sol-id { font-weight: 700; }
+.pdf-sol-detalle { color: var(--tinta-suave); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pdf-sol-acciones { display: flex; gap: 6px; flex-shrink: 0; }
+
+.pdf-estado { padding: 3px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+.pdf-estado.aprobada { background: #eef7f1; color: #3d8b5f; }
+.pdf-estado.pendiente { background: #fdf3e3; color: #b07d2b; }
+
+.pdf-aprobacion-manual { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.pdf-aprobacion-manual label { font-size: 0.8rem; color: var(--tinta-suave); }
+.fila-aprobacion { display: flex; gap: 8px; }
+.fila-aprobacion input { flex: 1; }
+
+/* Modal cliente PDF */
+.modal-pdf-cliente form, .modal-login form { display: flex; flex-direction: column; gap: 10px; }
+
+/* Código aprobado (para copiar) */
+.pdf-codigo {
+  font-family: var(--font-titulo);
+  font-size: 1.15rem;
+  letter-spacing: 0.08em;
+  background: var(--acento-suave);
+  padding: 4px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
 /* Botón agregar en tarjetas y modal */
 .btn-agregar {
   border: 1px solid var(--borde-fuerte);

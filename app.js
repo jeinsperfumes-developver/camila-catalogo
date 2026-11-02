@@ -22,6 +22,9 @@
     { id: "pruebas", nombre: "Yo · pruebas (312 388 7226)", num: WHATSAPP_PRUEBAS },
   ];
   const AUDIO_COTIZACION_URL = "https://mini.clmbilliards.online/cotizacion_audio";
+  const NTFY_TOPIC_PDF = "https://ntfy.sh/jarvis-jeisson";
+  const PDF_APROBACIONES_URL = "pdf/aprobaciones.json";
+  const PDF_PRUEBA_URL = "pdf/prueba.pdf";
 
   /** @type {Producto[]} */
   let productos = [];
@@ -121,6 +124,22 @@
     btnSelLimpiar: $("btnSelLimpiar"),
     btnSelSalir: $("btnSelSalir"),
     selContador: $("selContador"),
+    // Flujo PDF
+    chkSolicitarPdf: $("chkSolicitarPdf"),
+    btnAdminPdf: $("btnAdminPdf"),
+    pdfAdminBackdrop: $("pdfAdminBackdrop"),
+    btnCerrarPdfAdmin: $("btnCerrarPdfAdmin"),
+    listaSolicitudesPdf: $("listaSolicitudesPdf"),
+    sinSolicitudesPdf: $("sinSolicitudesPdf"),
+    formAprobarManual: $("formAprobarManual"),
+    inputIdManual: $("inputIdManual"),
+    btnAbrirPdfCliente: $("btnAbrirPdfCliente"),
+    pdfClienteBackdrop: $("pdfClienteBackdrop"),
+    btnCerrarPdfCliente: $("btnCerrarPdfCliente"),
+    formPdfCliente: $("formPdfCliente"),
+    inputPdfId: $("inputPdfId"),
+    inputPdfCodigo: $("inputPdfCodigo"),
+    pdfClienteError: $("pdfClienteError"),
   };
 
   let temporizadorToast = null;
@@ -1207,8 +1226,27 @@
   async function enviarCotizacion() {
     if (!carrito.length) return toast("Tu carrito está vacío.", true);
     const texto = textoCotizacion();
+    // 0) Si pidió el catálogo en PDF: registrar solicitud + avisar por ntfy
+    if (elementos.chkSolicitarPdf?.checked) {
+      const solicitud = {
+        id: nuevoIdSolicitud(),
+        fecha: new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" }),
+        productos: carrito.length,
+        total: (() => { const t = totalCarrito(); return Number.isFinite(t) && t > 0 ? t : null; })(),
+        estado: "pendiente",
+      };
+      solicitudesPdf.push(solicitud);
+      guardarSolicitudesPdf();
+      notificarSolicitudPdf(solicitud);
+      toast(`Solicitud ${solicitud.id} registrada. Te enviaremos un código de desbloqueo por WhatsApp.`);
+      // El ID viaja en el mensaje de WhatsApp para que Camila lo vea
+      setTimeout(() => { /* el toast dura su tiempo */ }, 0);
+    }
     // 1) WhatsApp con el detalle (siempre): abre la app con el mensaje listo
-    const url = `https://wa.me/${destinoActivo().num}?text=${encodeURIComponent(texto)}`;
+    const textoFinal = elementos.chkSolicitarPdf?.checked
+      ? texto + `\n\n*Solicito también el catálogo en PDF — mi ID de solicitud: ${solicitudesPdf[solicitudesPdf.length - 1]?.id || ""}*`
+      : texto;
+    const url = `https://wa.me/${destinoActivo().num}?text=${encodeURIComponent(textoFinal)}`;
     const vent = window.open(url, "_blank");
 
     // 2) Audio con el resumen (voz de Jeisson, sintetizado en la Mac):
@@ -1233,7 +1271,193 @@
     }
   }
 
-  /* ---------------- Inicialización ---------------- */
+  /* ---------------- Flujo Solicitar PDF ---------------- */
+  /* Cliente marca "Solicitar PDF" al enviar cotización → ntfy avisa a Jeisson/Camila
+     → Camila aprueba en el panel admin → se genera un código de desbloqueo
+     → el código se envía al cliente (WhatsApp/correo)
+     → el cliente valida ID + código en el footer y descarga el PDF. */
+
+  const CLAVE_SOLICITUDES_PDF = "camila_pdf_solicitudes_v1";
+
+  /** @type {{id: string, fecha: string, productos: number, total: number|null, estado: "pendiente"|"aprobada", codigo?: string}[]} */
+  let solicitudesPdf = [];
+
+  function cargarSolicitudesPdf() {
+    try {
+      const crudo = localStorage.getItem(CLAVE_SOLICITUDES_PDF);
+      const datos = crudo ? JSON.parse(crudo) : [];
+      if (Array.isArray(datos)) solicitudesPdf = datos;
+    } catch { solicitudesPdf = []; }
+  }
+
+  function guardarSolicitudesPdf() {
+    try { localStorage.setItem(CLAVE_SOLICITUDES_PDF, JSON.stringify(solicitudesPdf)); } catch { }
+  }
+
+  function nuevoIdSolicitud() {
+    return "PDF-" + String(1000 + Math.floor(Math.random() * 9000));
+  }
+
+  function nuevoCodigoDesbloqueo() {
+    const letras = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // sin I ni O para evitar confusión con 1/0
+    const d = () => letras[Math.floor(Math.random() * letras.length)];
+    const n = () => Math.floor(Math.random() * 10);
+    return `CO-${d()}${n()}${d()}${n()}${d()}`;
+  }
+
+  async function notificarSolicitudPdf(solicitud) {
+    const resumen = carrito.slice(0, 5).map((i) => `${i.cant}× ${i.nombre}`).join(" · ");
+    const extras = carrito.length > 5 ? ` (+${carrito.length - 5} más)` : "";
+    const cuerpo = {
+      topic: "jarvis-jeisson",
+      title: `Solicitud PDF ${solicitud.id}`,
+      message: `Cliente pidió el catálogo en PDF con su cotización (${solicitud.productos} productos).\n${resumen}${extras}\nAprueba desde el sitio: menú → "Aprobar solicitudes PDF".`,
+      tags: ["page_facing_up", "perfume"],
+      priority: 4,
+    };
+    try {
+      await fetch(NTFY_TOPIC_PDF, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cuerpo),
+      });
+    } catch { /* el aviso no bloquea el flujo */ }
+  }
+
+  function abrirPdfAdmin() {
+    renderizarSolicitudesPdf();
+    elementos.pdfAdminBackdrop.hidden = false;
+    requestAnimationFrame(() => elementos.pdfAdminBackdrop.classList.add("visible"));
+  }
+
+  function cerrarPdfAdmin() {
+    elementos.pdfAdminBackdrop.classList.remove("visible");
+    setTimeout(() => (elementos.pdfAdminBackdrop.hidden = true), 280);
+  }
+
+  function renderizarSolicitudesPdf() {
+    const cont = elementos.listaSolicitudesPdf;
+    cont.replaceChildren();
+    const pendientes = solicitudesPdf.slice().sort((a, b) => (a.estado === b.estado ? 0 : a.estado === "pendiente" ? -1 : 1));
+    elementos.sinSolicitudesPdf.hidden = pendientes.length > 0;
+    for (const sol of pendientes) {
+      const li = document.createElement("li");
+      const detalle = `${sol.fecha} · ${sol.productos} productos${Number.isFinite(sol.total) ? ` · ${formatearPrecio(sol.total)}` : ""}`;
+      const acciones = sol.estado === "pendiente"
+        ? `<button class="btn btn-primary" data-aprobar="${escapar(sol.id)}">Aprobar</button>`
+        : `<span class="pdf-estado aprobada">Aprobada</span> <span class="pdf-codigo">${escapar(sol.codigo || "")}</span>`;
+      li.innerHTML = `
+        <span class="pdf-sol-info">
+          <span class="pdf-sol-id">${escapar(sol.id)}</span>
+          <span class="pdf-sol-detalle">${escapar(detalle)}</span>
+        </span>
+        <span class="pdf-sol-acciones">${acciones}</span>`;
+      const btn = li.querySelector("[data-aprobar]");
+      if (btn) btn.addEventListener("click", () => aprobarSolicitud(sol.id));
+      cont.appendChild(li);
+    }
+  }
+
+  function aprobarSolicitud(id) {
+    const sol = solicitudesPdf.find((s) => s.id === id);
+    if (!sol) return toast("No encontré esa solicitud.", true);
+    if (sol.estado === "aprobada") return toast(`Ya está aprobada. Código: ${sol.codigo}`, false);
+    sol.estado = "aprobada";
+    sol.codigo = nuevoCodigoDesbloqueo();
+    guardarSolicitudesPdf();
+    renderizarSolicitudesPdf();
+    toast(`Solicitud ${sol.id} aprobada. Código: ${sol.codigo} — envíalo al cliente.`);
+  }
+
+  async function abrirPdfCliente() {
+    elementos.pdfClienteError.hidden = true;
+    elementos.pdfClienteBackdrop.hidden = false;
+    requestAnimationFrame(() => elementos.pdfClienteBackdrop.classList.add("visible"));
+    setTimeout(() => elementos.inputPdfId.focus(), 60);
+    // Refrescar aprobaciones publicadas (por si Camila aprobó desde otro navegador)
+    try {
+      const r = await fetch(PDF_APROBACIONES_URL, { cache: "no-store" });
+      if (r.ok) {
+        const publicadas = await r.json();
+        if (Array.isArray(publicadas)) {
+          for (const p of publicadas) {
+            const local = solicitudesPdf.find((s) => s.id === p.id);
+            if (local && local.estado !== "aprobada" && p.codigo) {
+              local.estado = "aprobada";
+              local.codigo = p.codigo;
+            }
+          }
+          guardarSolicitudesPdf();
+        }
+      }
+    } catch { /* sin conexión: se validan las aprobaciones locales */ }
+  }
+
+  function cerrarPdfCliente() {
+    elementos.pdfClienteBackdrop.classList.remove("visible");
+    setTimeout(() => (elementos.pdfClienteBackdrop.hidden = true), 280);
+  }
+
+  async function validarYDescargarPdf(e) {
+    e.preventDefault();
+    const id = elementos.inputPdfId.value.trim().toUpperCase();
+    const codigo = elementos.inputPdfCodigo.value.trim().toUpperCase();
+    const err = elementos.pdfClienteError;
+    err.hidden = true;
+    if (!id || !codigo) {
+      err.textContent = "Ingresa tu ID de solicitud y el código de desbloqueo.";
+      err.hidden = false;
+      return;
+    }
+    // 1) Aprobaciones locales (mismo navegador que pidió el PDF)
+    let sol = solicitudesPdf.find((s) => s.id === id);
+    // 2) Aprobaciones publicadas en el repo (cualquier navegador)
+    if (!sol || sol.estado !== "aprobada") {
+      try {
+        const r = await fetch(PDF_APROBACIONES_URL, { cache: "no-store" });
+        if (r.ok) {
+          const publicadas = await r.json();
+          if (Array.isArray(publicadas)) {
+            const remota = publicadas.find((p) => String(p.id).toUpperCase() === id);
+            if (remota && remota.codigo) {
+              if (!sol) { sol = { id, fecha: "", productos: 0, total: null, estado: "aprobada", codigo: remota.codigo }; solicitudesPdf.push(sol); }
+              else { sol.estado = "aprobada"; sol.codigo = remota.codigo; }
+              guardarSolicitudesPdf();
+            }
+          }
+        }
+      } catch { /* sin conexión */ }
+    }
+    if (!sol || sol.estado !== "aprobada") {
+      err.textContent = "Ese ID no tiene una aprobación vigente. Verifica con nosotras por WhatsApp.";
+      err.hidden = false;
+      return;
+    }
+    if (String(sol.codigo).toUpperCase() !== codigo) {
+      err.textContent = "El código no coincide. Revísalo (ej. CO-9F3K).";
+      err.hidden = false;
+      return;
+    }
+    // Descargar el PDF
+    try {
+      const r = await fetch(PDF_PRUEBA_URL);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const blob = await r.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "CO-perfumeria-catalogo.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      cerrarPdfCliente();
+      toast("¡Catálogo descargado! Que lo disfrutes.");
+    } catch {
+      err.textContent = "No pude descargar el PDF. Revisa tu conexión e inténtalo de nuevo.";
+      err.hidden = false;
+    }
+  }
+
+
 
   function conectarEventos() {
     // Menú
@@ -1349,6 +1573,24 @@
     elementos.carritoBackdrop.addEventListener("click", cerrarCarrito);
     elementos.btnEnviarCotizacion.addEventListener("click", enviarCotizacion);
 
+    // Flujo PDF
+    elementos.btnAdminPdf.addEventListener("click", () => { cerrarDrawer(); abrirPdfAdmin(); });
+    elementos.btnCerrarPdfAdmin.addEventListener("click", cerrarPdfAdmin);
+    elementos.pdfAdminBackdrop.addEventListener("click", (e) => {
+      if (e.target === elementos.pdfAdminBackdrop) cerrarPdfAdmin();
+    });
+    elementos.formAprobarManual.addEventListener("submit", (e) => {
+      e.preventDefault();
+      aprobarSolicitud(elementos.inputIdManual.value.trim().toUpperCase());
+      elementos.inputIdManual.value = "";
+    });
+    elementos.btnAbrirPdfCliente.addEventListener("click", abrirPdfCliente);
+    elementos.btnCerrarPdfCliente.addEventListener("click", cerrarPdfCliente);
+    elementos.pdfClienteBackdrop.addEventListener("click", (e) => {
+      if (e.target === elementos.pdfClienteBackdrop) cerrarPdfCliente();
+    });
+    elementos.formPdfCliente.addEventListener("submit", validarYDescargarPdf);
+
     // Login admin
     elementos.btnCerrarLogin.addEventListener("click", cerrarLogin);
     elementos.loginBackdrop.addEventListener("click", (e) => {
@@ -1422,6 +1664,7 @@
     try { rol = localStorage.getItem(CLAVE_ROL) === "admin" ? "admin" : "invitado"; } catch { }
     aplicarRol();
     cargarCarrito();
+    cargarSolicitudesPdf();
     renderizarCarrito();
     cargarInicial();
     renderizarTodo();
